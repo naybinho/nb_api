@@ -3,7 +3,7 @@ package main
 import (
 	"sync"
 
-	"wacalls/internal/voip/call"
+	"nb_api/internal/voip/call"
 )
 
 type activeCall struct {

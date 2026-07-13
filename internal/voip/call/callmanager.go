@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"sync"
 	"time"
-	"wacalls/internal/voip/core"
-	"wacalls/internal/voip/media"
-	"wacalls/internal/voip/signaling"
-	"wacalls/internal/voip/transport"
-	"wacalls/internal/voip/wanode"
+	"nb_api/internal/voip/core"
+	"nb_api/internal/voip/media"
+	"nb_api/internal/voip/signaling"
+	"nb_api/internal/voip/transport"
+	"nb_api/internal/voip/wanode"
 
 	"go.mau.fi/whatsmeow/types"
 )

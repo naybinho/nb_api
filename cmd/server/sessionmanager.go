@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
+	"unicode"
 
 	"go.mau.fi/whatsmeow"
 	"go.mau.fi/whatsmeow/store/sqlstore"
@@ -108,7 +110,7 @@ func (m *SessionManager) Restore(ctx context.Context) error {
 			continue
 		}
 		client := whatsmeow.NewClient(device, m.waLogger)
-		s := newSession(m, row.ID, row.Name, client)
+		s := newSession(m, row.ID, row.Name, row.APIKey, client)
 		m.register(s)
 		if err := s.connect(ctx); err != nil {
 			m.log.Error("session connect failed", "session", row.ID, "err", err)
@@ -119,14 +121,47 @@ func (m *SessionManager) Restore(ctx context.Context) error {
 	return nil
 }
 
-func (m *SessionManager) Create(name string) (string, error) {
-	id := newSessionID()
-	if err := m.store.insert(m.appCtx, id, name); err != nil {
+func slugify(s string) string {
+	var b strings.Builder
+	prevDash := false
+	for _, r := range strings.TrimSpace(s) {
+		if r == ' ' || r == '_' {
+			if !prevDash {
+				b.WriteRune('-')
+				prevDash = true
+			}
+		} else if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' {
+			b.WriteRune(r)
+			prevDash = false
+		}
+	}
+	return strings.Trim(b.String(), "-")
+}
+
+func (m *SessionManager) Create(name, apiKey string) (string, error) {
+	id := slugify(name)
+	if id == "" {
+		id = newSessionID()
+	}
+	// Garante unicidade: se o slug já existir, adiciona sufixo numérico
+	if _, exists := m.Get(id); exists {
+		for i := 2; ; i++ {
+			candidate := fmt.Sprintf("%s-%d", id, i)
+			if _, exists := m.Get(candidate); !exists {
+				id = candidate
+				break
+			}
+		}
+	}
+	if apiKey == "" {
+		apiKey = newAPIKey()
+	}
+	if err := m.store.insert(m.appCtx, id, name, apiKey); err != nil {
 		return "", err
 	}
 	device := m.container.NewDevice()
 	client := whatsmeow.NewClient(device, m.waLogger)
-	s := newSession(m, id, name, client)
+	s := newSession(m, id, name, apiKey, client)
 	m.register(s)
 	m.broker.emitSessionList(m.infos())
 	if err := s.startPairing(m.appCtx); err != nil {
@@ -191,6 +226,45 @@ func (m *SessionManager) Pair(id string) error {
 	m.broker.emitSessionList(m.infos())
 	m.log.Info("session re-pairing", "session", id)
 	return nil
+}
+
+func (m *SessionManager) UpdateAPIKey(id, apiKey string) error {
+	s, ok := m.Get(id)
+	if !ok {
+		return fmt.Errorf("no session %s", id)
+	}
+	if err := m.store.updateAPIKey(m.appCtx, id, apiKey); err != nil {
+		return err
+	}
+	s.apiKey = apiKey
+	m.broker.emitSessionList(m.infos())
+	m.log.Info("session api key updated", "session", id)
+	return nil
+}
+
+func (m *SessionManager) UpdateName(id, name string) error {
+	s, ok := m.Get(id)
+	if !ok {
+		return fmt.Errorf("no session %s", id)
+	}
+	if err := m.store.updateName(m.appCtx, id, name); err != nil {
+		return err
+	}
+	s.name = name
+	m.broker.emitSessionList(m.infos())
+	m.log.Info("session name updated", "session", id, "name", name)
+	return nil
+}
+
+func (m *SessionManager) GetByAPIKey(apiKey string) (*Session, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, s := range m.sessions {
+		if s.apiKey == apiKey && s.apiKey != "" {
+			return s, true
+		}
+	}
+	return nil, false
 }
 
 func (m *SessionManager) disconnectAll() {

@@ -2,10 +2,10 @@ package call
 
 import (
 	"context"
-	"wacalls/internal/voip/core"
-	"wacalls/internal/voip/media"
-	"wacalls/internal/voip/signaling"
-	"wacalls/internal/voip/wanode"
+	"nb_api/internal/voip/core"
+	"nb_api/internal/voip/media"
+	"nb_api/internal/voip/signaling"
+	"nb_api/internal/voip/wanode"
 
 	waBinary "go.mau.fi/whatsmeow/binary"
 	"go.mau.fi/whatsmeow/types"

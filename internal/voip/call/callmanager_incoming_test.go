@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"testing"
 
-	"wacalls/internal/voip/core"
+	"nb_api/internal/voip/core"
 )
 
 // Incoming media path: once a relay connects for an accepted incoming call

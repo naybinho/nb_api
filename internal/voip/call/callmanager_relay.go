@@ -1,8 +1,8 @@
 package call
 
 import (
-	"wacalls/internal/voip/core"
-	"wacalls/internal/voip/transport"
+	"nb_api/internal/voip/core"
+	"nb_api/internal/voip/transport"
 )
 
 type RelayTransport interface {

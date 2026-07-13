@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"sync/atomic"
 
-	"wacalls/internal/voip/media"
+	"nb_api/internal/voip/media"
 
 	"github.com/pion/webrtc/v4"
 )

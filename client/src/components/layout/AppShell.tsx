@@ -1,11 +1,14 @@
 import { useState, type ReactNode } from "react";
-import { Menu, PhoneCall } from "lucide-react";
+import { BookOpen, Menu, PhoneCall, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
+import { cn } from "@/lib/utils";
 
-export const AppShell = ({ children }: { children: ReactNode }) => {
+export type ViewType = "calls" | "instancias";
+
+export const AppShell = ({ children, view, onViewChange }: { children: ReactNode; view: ViewType; onViewChange: (v: ViewType) => void }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -26,7 +29,41 @@ export const AppShell = ({ children }: { children: ReactNode }) => {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <PhoneCall className="h-4 w-4" />
           </span>
-          <span className="text-lg font-semibold tracking-tight">WaCalls</span>
+          <span className="text-lg font-semibold tracking-tight">NB_Api</span>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border p-0.5">
+          <button
+            onClick={() => onViewChange("instancias")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              view === "instancias" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Server className="h-4 w-4" />
+            Instancias
+          </button>
+          <button
+            onClick={() => onViewChange("calls")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              view === "calls" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <PhoneCall className="h-4 w-4" />
+            Chamadas
+          </button>
+          <a
+            href="http://localhost:8080/swagger"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <BookOpen className="h-4 w-4" />
+            API
+          </a>
         </div>
         <ThemeToggle />
       </header>

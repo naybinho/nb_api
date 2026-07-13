@@ -3,7 +3,7 @@ package call
 import (
 	"fmt"
 	"time"
-	"wacalls/internal/voip/core"
+	"nb_api/internal/voip/core"
 )
 
 type CallStateData struct {

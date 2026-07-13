@@ -36,11 +36,12 @@ func newTestManager(t *testing.T) *SessionManager {
 func (m *SessionManager) addUnconnected(t *testing.T, name string) *Session {
 	t.Helper()
 	id := newSessionID()
-	if err := m.store.insert(m.appCtx, id, name); err != nil {
+	apiKey := newAPIKey()
+	if err := m.store.insert(m.appCtx, id, name, apiKey); err != nil {
 		t.Fatal(err)
 	}
 	client := whatsmeow.NewClient(m.container.NewDevice(), waLog.Noop)
-	s := newSession(m, id, name, client)
+	s := newSession(m, id, name, apiKey, client)
 	m.register(s)
 	return s
 }

@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"wacalls/internal/voip/call"
-	"wacalls/internal/voip/core"
-	"wacalls/internal/voip/signaling"
-	"wacalls/internal/voip/wanode"
-	"wacalls/internal/wa"
+	"nb_api/internal/voip/call"
+	"nb_api/internal/voip/core"
+	"nb_api/internal/voip/signaling"
+	"nb_api/internal/voip/wanode"
+	"nb_api/internal/wa"
 
 	"github.com/mdp/qrterminal/v3"
 	"go.mau.fi/whatsmeow"
@@ -21,10 +21,11 @@ import (
 )
 
 type Session struct {
-	id   string
-	name string
-	mgr  *SessionManager
-	log  *slog.Logger
+	id     string
+	name   string
+	apiKey string
+	mgr    *SessionManager
+	log    *slog.Logger
 
 	client *whatsmeow.Client
 	reg    *callRegistry
@@ -33,10 +34,11 @@ type Session struct {
 	auth AuthSnapshot
 }
 
-func newSession(mgr *SessionManager, id, name string, client *whatsmeow.Client) *Session {
+func newSession(mgr *SessionManager, id, name, apiKey string, client *whatsmeow.Client) *Session {
 	s := &Session{
 		id:     id,
 		name:   name,
+		apiKey: apiKey,
 		mgr:    mgr,
 		log:    mgr.log.With("session", id),
 		client: client,
@@ -170,6 +172,16 @@ func (s *Session) handleEvent(rawEvt any) {
 		if ac, ok := s.callForEvent(evt.From, evt.Data); ok {
 			ac.cm.HandleCallTerminate(wrapCall(evt.From, evt.Data))
 		}
+	case *events.Message:
+		s.mgr.broker.emitEvent(s.id, "message", evt)
+	case *events.Receipt:
+		s.mgr.broker.emitEvent(s.id, "message-receipt", evt)
+	case *events.Presence:
+		s.mgr.broker.emitEvent(s.id, "presence", evt)
+	case *events.GroupInfo:
+		s.mgr.broker.emitEvent(s.id, "group-updated", evt)
+	case *events.PushName:
+		s.mgr.broker.emitEvent(s.id, "push-name", evt)
 	}
 }
 
@@ -225,7 +237,7 @@ func (s *Session) info() SessionInfo {
 	if id := s.client.Store.ID; id != nil {
 		jid = id.String()
 	}
-	return SessionInfo{ID: s.id, Name: s.name, JID: jid, State: a.State, Paired: a.Paired || jid != ""}
+	return SessionInfo{ID: s.id, Name: s.name, JID: jid, State: a.State, Paired: a.Paired || jid != "", APIKey: s.apiKey}
 }
 
 func (s *Session) setBridge(callID string, b *Bridge) {

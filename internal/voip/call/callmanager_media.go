@@ -2,9 +2,9 @@ package call
 
 import (
 	"time"
-	"wacalls/internal/voip/core"
-	"wacalls/internal/voip/media"
-	"wacalls/internal/voip/transport"
+	"nb_api/internal/voip/core"
+	"nb_api/internal/voip/media"
+	"nb_api/internal/voip/transport"
 )
 
 func (m *CallManager) initCodec() {

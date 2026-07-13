@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PlusCircle } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { AppShell } from "@/components/layout/AppShell";
+import { AppShell, type ViewType } from "@/components/layout/AppShell";
 import { CallsPage } from "@/pages/CallsPage";
+import { InstanciasPage } from "@/pages/InstanciasPage";
 import { SessionPairing } from "@/components/domain/session/SessionPairing";
 import { SessionHeader } from "@/components/domain/session/SessionHeader";
 import { IncomingCallModal } from "@/components/domain/call/IncomingCallModal";
@@ -16,6 +17,7 @@ export const App = () => {
   const sessions = useSessions((s) => s.sessions);
   const activeId = useSessions((s) => s.activeId);
   const theme = useTheme((s) => s.theme);
+  const [view, setView] = useState<ViewType>("calls");
 
   useEffect(() => {
     ensureSessionsWired();
@@ -26,8 +28,10 @@ export const App = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <AppShell>
-        {sessions.length === 0 ? (
+      <AppShell view={view} onViewChange={setView}>
+        {view === "instancias" ? (
+          <InstanciasPage />
+        ) : sessions.length === 0 ? (
           <EmptyState
             icon={<PlusCircle className="h-6 w-6" />}
             title="No accounts yet"

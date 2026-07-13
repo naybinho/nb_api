@@ -2,8 +2,8 @@ package call
 
 import (
 	"strings"
-	"wacalls/internal/voip/core"
-	"wacalls/internal/voip/wanode"
+	"nb_api/internal/voip/core"
+	"nb_api/internal/voip/wanode"
 
 	waBinary "go.mau.fi/whatsmeow/binary"
 )

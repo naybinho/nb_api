@@ -40,6 +40,7 @@ type SessionInfo struct {
 	JID    string `json:"jid"`
 	State  string `json:"state"`
 	Paired bool   `json:"paired"`
+	APIKey string `json:"apiKey"`
 }
 
 type subscriber struct {
@@ -202,6 +203,15 @@ func (b *Broker) emitIncoming(sessionID, id, peer string) {
 func (b *Broker) emitIncomingClaimed(sessionID, id, owner string) {
 	b.broadcast(map[string]any{"type": "incoming-claimed", "sessionId": sessionID, "id": id, "owner": owner})
 }
+
+func (b *Broker) emitEvent(sessionID string, evtType string, payload any) {
+	b.broadcast(map[string]any{
+		"type":      evtType,
+		"sessionId": sessionID,
+		"payload":   payload,
+	})
+}
+
 
 func (b *Broker) historyRows(sessionID string, limit int) []CallRecord {
 	b.mu.RLock()
