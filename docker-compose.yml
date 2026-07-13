@@ -5,7 +5,17 @@ services:
     image: naybinho/nb_api:v1.0.0
     container_name: nb_api-server
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      DB_HOST: 127.0.0.1
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: senha
+      DB_NAME: nb_api
+      DB_SSLMODE: disable
+      REDIS_HOST: 127.0.0.1:6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: "0"
+      AUTH_USERNAME: admin
+      AUTH_PASSWORD: admin123
     ports:
       - "8080:8080"
