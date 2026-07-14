@@ -25,6 +25,16 @@ export const useAcceptCall = (micId: string | null) =>
         clearIncoming();
         return;
       }
+      if (
+        e.message.includes("getUserMedia") ||
+        e.message.includes("mediaDevices") ||
+        e.message.includes("microfone")
+      ) {
+        toast.error(
+          "Microfone indisponível. Acesse via HTTPS ou localhost para usar o WebRTC.",
+        );
+        return;
+      }
       toast.error(e.message);
     },
   });

@@ -16,6 +16,14 @@ export const useStartCall = (sid: string, micId: string | null) =>
       const m = e.message;
       if (m.includes("429")) toast.error("Limit reached: max concurrent calls.");
       else if (m.includes("503")) toast.error("WhatsApp not paired.");
+      else if (
+        m.includes("getUserMedia") ||
+        m.includes("mediaDevices") ||
+        m.includes("microfone")
+      )
+        toast.error(
+          "Microfone indisponível. Acesse via HTTPS ou localhost para usar o WebRTC.",
+        );
       else toast.error(m);
     },
   });

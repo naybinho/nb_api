@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "assistente",
+  "agent": {
+    "assistente": {
+      "description": "Agente principal do projeto CRM Atendimento",
+      "mode": "primary"
+    },
+    "antigravity": {
+      "description": "Native opencode agent for antigravity",
+      "mode": "primary"
+    }
+  }
+}

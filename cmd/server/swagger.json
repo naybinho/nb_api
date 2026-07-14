@@ -3,7 +3,7 @@
   "info": {
     "title": "NB_Api",
     "description": "API do CRM Atendimento — Gerenciamento de chamadas e mensagens WhatsApp",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "servers": [
     { "url": "http://localhost:8080", "description": "Desenvolvimento" }

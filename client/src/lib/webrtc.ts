@@ -16,11 +16,23 @@ export type OpenCall = {
   close: () => void;
 };
 
+function ensureMediaDevices(): void {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error(
+      "O navegador não tem permissão para acessar o microfone. " +
+        "Isso geralmente acontece quando a página é carregada via HTTP em vez de HTTPS. " +
+        "Acesse a aplicação usando HTTPS ou localhost. " +
+        "Se estiver usando Docker, tente acessar via http://localhost:8080.",
+    );
+  }
+}
+
 export const openCall = async (
   sid: string,
   callId: string,
   micDeviceId: string | null,
 ): Promise<OpenCall> => {
+  ensureMediaDevices();
   const micStream = await navigator.mediaDevices.getUserMedia({
     audio: micDeviceId ? { deviceId: { exact: micDeviceId } } : true,
   });
