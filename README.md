@@ -6,7 +6,7 @@
 
 Este projeto oferece uma solução robusta de API conectada diretamente ao WhatsApp, permitindo envio de mensagens, gerenciamento de grupos, visualização de histórico e realização de chamadas de voz (VoIP) diretamente do navegador.
 
-[![Version](https://img.shields.io/badge/Version-1.0.2-blue)](https://github.com/naybinho/nb_api)
+[![Version](https://img.shields.io/badge/Version-1.0.4-blue)](https://github.com/naybinho/nb_api)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791?logo=postgresql&logoColor=white)](https://postgresql.org)
@@ -84,14 +84,9 @@ REDIS_DB=0
 # Autenticação da API (Basic Auth)
 AUTH_USERNAME=admin
 AUTH_PASSWORD=admin123
-
-# (Opcional) IP externo para WebRTC no Docker
-# EXTERNAL_IP=192.168.1.100
 ```
 
 > **Nota:** Se `AUTH_USERNAME` estiver vazio, a autenticação é desabilitada.
->
-> **Nota para Docker:** A variável `EXTERNAL_IP` é necessária quando o servidor roda em container Docker. Veja a **[Opção C: Docker](#opção-c-docker-recomendado-para-implantação)**.
 
 ### Flags do Servidor
 
@@ -111,47 +106,46 @@ O binário do servidor (`cmd/server`) aceita as seguintes flags na linha de coma
 Para facilitar a inicialização no Windows, foram criados arquivos `.bat` na raiz do projeto:
 
 ### Opção A: Ambiente de Desenvolvimento (Recomendado para programar)
-Dê um duplo clique no arquivo **`start.bat`**.
+Dê um duplo clique no arquivo **`start-dev.bat`**.
 Ele abrirá duas janelas do terminal automaticamente:
-- Uma rodando a API do backend na porta `:8080`
-- Outra rodando o servidor de desenvolvimento do React (Vite) na porta `:5173`
+- Uma rodando a API do backend na porta `:8081`
+- Outra rodando o servidor de desenvolvimento do React (Vite) na porta `:5173` com HMR
 - *Qualquer alteração no código do frontend será refletida instantaneamente no navegador.*
 
 ### Opção B: Ambiente de Produção (Uso diário)
 Se você não vai alterar o código e quer apenas **usar** o sistema de forma limpa e unificada na porta `:8080`:
 
-1. Compile o frontend primeiro (se houve alguma alteração recente):
-   ```bash
-   cd client && npm run build && cd ..
-   ```
-2. Dê um duplo clique no arquivo **`start-prod.bat`**.
-   Ele vai rodar o servidor Go, que servirá tanto a API quanto a interface web compilada estática. Acesse: 👉 `http://localhost:8080`
+Dê um duplo clique no arquivo **`start.bat`**.
+Ele vai compilar o frontend automaticamente e rodar o servidor Go, que servirá tanto a API quanto a interface web compilada estática. Acesse: 👉 `http://localhost:8080`
+
+> **Nota:** Se você já compilou o frontend manualmente, pode usar **`start-prod.bat`** para pular a etapa de compilação.
 
 ### Opção C: Docker (Recomendado para implantação)
 
-Execute com Docker Compose:
+Certifique-se de que o `docker-compose.yml` está configurado com as credenciais corretas do PostgreSQL e Redis, e execute:
 
 ```bash
-docker compose up
+docker compose up -d
 ```
 
-> ⚠️ **Importante para Windows/Mac (Docker Desktop):**
-> O WebRTC precisa que o navegador alcance os ICE candidates do servidor. No Docker Desktop, os containers rodam em uma VM isolada e os ICE candidates gerados com o IP interno do container (`172.17.0.x`) não são acessíveis pelo navegador.
+Acesse: 👉 `http://SEU_IP:8080`
+
+> ⚠️ **WebRTC em Docker — Linux (recomendado):**
+> O `docker-compose.yml` já utiliza `network_mode: host`, que faz o container compartilhar a rede do host diretamente. Isso resolve os problemas de WebRTC sem precisar configurar IP externo.
 >
-> **Solução:** Defina a variável `EXTERNAL_IP` no `docker-compose.yml` com o IP da máquina host:
->
-> ```yaml
-> EXTERNAL_IP: "192.168.1.100"   # <- substitua pelo IP da sua máquina
-> ```
->
-> Em Linux, você pode usar `network_mode: host` como alternativa:
 > ```yaml
 > services:
 >   api:
 >     network_mode: host
 > ```
 >
-> Acesse: 👉 `http://localhost:8080`
+> ⚠️ **WebRTC em Docker Desktop (Windows/Mac):**
+> O `network_mode: host` não funciona no Docker Desktop. Nesse caso, remova o `network_mode: host` e descomente a variável `EXTERNAL_IP` no `docker-compose.yml` com o IP da máquina host:
+>
+> ```yaml
+> environment:
+>   EXTERNAL_IP: "192.168.1.100"   # <- substitua pelo IP da sua máquina
+> ```
 
 ---
 
@@ -686,6 +680,16 @@ O servidor limita o número de chamadas simultâneas por sessão conforme a flag
 ---
 
 ## � Changelog
+### v1.0.4 (2026-07-13)
+- 🐳 **Docker**: Substituído `EXTERNAL_IP` por `network_mode: host` para resolução definitiva do WebRTC em Linux
+- ⚡ **Scripts de inicialização**: Unificado `start.bat` (compila frontend + servidor Go na porta 8080); novo `start-dev.bat` para desenvolvimento com dois terminais (backend :8081 + frontend :5173 com HMR)
+- 🔗 **AppShell**: Link do Swagger alterado para caminho relativo (`/swagger`)
+- 🗄️ **Configuração**: DB e Redis apontando para servidor externo (`192.168.50.2`)
+- 🚢 **Imagem Docker**: Atualizada para `v1.0.4` e publicada no Docker Hub
+
+### v1.0.3 (2026-07-13)
+- 🔧 **Correções de API**: Adicionado `context.Context` em chamadas da biblioteca `whatsmeow` (`GetJoinedGroups`, `MarkRead`, `GetBlocklist`, `CreateNewsletter` etc.)
+- 🐳 **Imagem Docker**: Atualizada para `v1.0.3` e publicada no Docker Hub
 
 ### v1.0.2 (2026-07-13)
 - 📖 **Documentação completa da API**: Adicionadas seções detalhadas para todos os endpoints (sessões, mensagens, grupos, contatos, perfil, blocklist, newsletters, chamadas WebRTC, eventos SSE)
