@@ -53,7 +53,7 @@ export const AppShell = ({ children, view, onViewChange }: { children: ReactNode
             Chamadas
           </button>
           <a
-            href="http://localhost:8080/swagger"
+            href="/swagger"
             target="_blank"
             rel="noopener noreferrer"
             className={cn(

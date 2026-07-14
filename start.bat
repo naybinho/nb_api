@@ -1,19 +1,24 @@
 @echo off
+title NB_Api Server
 echo ===================================================
-echo             Iniciando NB_Api
+echo     NB_Api - Modo Unificado (porta unica 8080)
 echo ===================================================
+echo.
+echo Compilando o Frontend...
+echo.
+cd client
+call npm run build
+if %errorlevel% neq 0 (
+    echo [ERRO] Falha ao compilar o frontend.
+    pause
+    exit /b 1
+)
+cd ..
 
 echo.
-echo Iniciando o Backend (Go) na porta 8080...
-start "NB_Api Backend" cmd /k "go run .\cmd\server -addr :8080"
+echo Iniciando o Servidor Unificado na porta 8080...
+echo Frontend + Backend disponiveis em: http://localhost:8080
+echo.
+go run .\cmd\server -addr :8080
 
-echo.
-echo Iniciando o Frontend (React Dev Server)...
-start "NB_Api Frontend" cmd /k "cd client && npm run dev"
-
-echo.
-echo Tudo iniciado! Duas novas janelas do terminal foram abertas.
-echo Backend disponivel em: http://localhost:8080
-echo Frontend disponivel em: http://localhost:5173 (modo dev)
-echo.
 pause
