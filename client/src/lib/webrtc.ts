@@ -41,7 +41,6 @@ export const openCall = async (
     if (dc.readyState === "open") dc.send(float32ToInt16LE(e.data));
   };
   micSource.connect(captureNode);
-  captureNode.connect(ctx.destination);
 
   const playbackNode = new AudioWorkletNode(ctx, PLAYBACK_PROCESSOR_NAME);
   const streamDest = ctx.createMediaStreamDestination();

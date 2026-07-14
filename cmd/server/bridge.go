@@ -27,8 +27,21 @@ type Bridge struct {
 	OnTerminalICE func()
 }
 
-func NewBridge(offerSDP string, log *slog.Logger) (*Bridge, string, error) {
-	pc, err := webrtc.NewPeerConnection(webrtc.Configuration{})
+// NewBridge creates a WebRTC bridge. If natIP is non-empty, it is used as the
+// NAT1To1IP for ICE candidates — required when the server runs inside Docker
+// (or behind NAT) so the browser can reach the container via the host IP.
+func NewBridge(offerSDP string, log *slog.Logger, natIP string) (*Bridge, string, error) {
+	var pc *webrtc.PeerConnection
+	var err error
+
+	if natIP != "" {
+		settings := webrtc.SettingEngine{}
+		settings.SetNAT1To1IPs([]string{natIP}, webrtc.ICECandidateTypeHost)
+		api := webrtc.NewAPI(webrtc.WithSettingEngine(settings))
+		pc, err = api.NewPeerConnection(webrtc.Configuration{})
+	} else {
+		pc, err = webrtc.NewPeerConnection(webrtc.Configuration{})
+	}
 	if err != nil {
 		return nil, "", err
 	}

@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   api:
-    image: naybinho/nb_api:v1.0.0
+    image: naybinho/nb_api:v1.0.1
     container_name: nb_api-server
     restart: unless-stopped
     environment:
@@ -17,5 +17,11 @@ services:
       REDIS_DB: "0"
       AUTH_USERNAME: admin
       AUTH_PASSWORD: admin123
+      # EXTERNAL_IP: IP da máquina host para funcionamento do WebRTC no Docker
+      # Em Docker Desktop (Windows/Mac), os ICE candidates do WebRTC usam o IP
+      # interno do container (ex: 172.17.0.x) que o navegador não alcança.
+      # Defina aqui o IP da máquina host (ex: 192.168.1.100) para resolver.
+      # No Linux, prefira usar network_mode: host.
+      EXTERNAL_IP: ""
     ports:
       - "8080:8080"
