@@ -54,7 +54,8 @@ type Broker struct {
 	calls   map[string]*CallRecord
 	history []CallRecord
 
-	SnapshotFn func() []any
+	SnapshotFn  func() []any
+	WebhookSink func(data []byte) // optional, non-blocking dispatch to webhooks
 }
 
 func NewBroker() *Broker {
@@ -91,6 +92,10 @@ func (b *Broker) broadcast(ev any) {
 		case s.ch <- data:
 		default:
 		}
+	}
+	// Non-blocking dispatch to webhook sink
+	if b.WebhookSink != nil {
+		b.WebhookSink(data)
 	}
 }
 

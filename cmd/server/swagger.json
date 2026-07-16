@@ -12,6 +12,19 @@
   "security": [
     { "basicAuth": [] }
   ],
+  "tags": [
+    { "name": "Sessões", "description": "Gerenciamento de sessões WhatsApp" },
+    { "name": "Chamadas", "description": "Chamadas de voz VoIP" },
+    { "name": "Mensagens", "description": "Envio de mensagens" },
+    { "name": "PIX", "description": "Pagamentos PIX via WhatsApp" },
+    { "name": "Grupos", "description": "Gerenciamento de grupos" },
+    { "name": "Usuários/Contatos", "description": "Informações de contatos" },
+    { "name": "Perfil", "description": "Configurações de perfil" },
+    { "name": "Blocklist", "description": "Lista de bloqueados" },
+    { "name": "Newsletters", "description": "Gerenciamento de canais" },
+    { "name": "Webhooks", "description": "Integração com sistemas externos via webhook" },
+    { "name": "Eventos", "description": "Stream de eventos em tempo real" }
+  ],
   "components": {
     "securitySchemes": {
       "basicAuth": {
@@ -97,6 +110,19 @@
         "properties": {
           "valid": { "type": "boolean", "description": "Se a chave é válida" },
           "message": { "type": "string", "description": "Mensagem de erro, se inválida" }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID único do webhook" },
+          "sessionId": { "type": "string", "description": "ID da sessão" },
+          "url": { "type": "string", "description": "URL que recebe os eventos" },
+          "events": { "type": "string", "description": "Eventos separados por vírgula ('*' para todos)" },
+          "enabled": { "type": "boolean", "description": "Se o webhook está ativo" },
+          "secret": { "type": "string", "description": "Segredo para assinatura HMAC" },
+          "createdAt": { "type": "string", "format": "date-time", "description": "Data de criação" },
+          "updatedAt": { "type": "string", "format": "date-time", "description": "Data da última atualização" }
         }
       }
     }
@@ -1620,6 +1646,143 @@
         "responses": {
           "200": { "description": "Resultado da validação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PixValidateResponse" } } } },
           "400": { "description": "Parâmetros inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/sessions/{sid}/webhooks": {
+      "get": {
+        "summary": "Listar webhooks da sessão",
+        "tags": ["Webhooks"],
+        "description": "Retorna todos os webhooks configurados para a sessão.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de webhooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhooks": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Webhook" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Criar webhook",
+        "tags": ["Webhooks"],
+        "description": "Cria um novo webhook para a sessão. Eventos serão enviados via POST para a URL configurada.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string", "description": "URL que receberá os eventos via POST" },
+                  "events": { "type": "string", "description": "Lista de eventos separados por vírgula. Use '*' para todos. Ex: 'message,presence,call-status'" },
+                  "enabled": { "type": "boolean", "description": "Ativar/desativar webhook (padrão: true)" },
+                  "secret": { "type": "string", "description": "Segredo para assinatura HMAC-SHA256 (header X-Webhook-Signature)" }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook criado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/webhooks/{wid}": {
+      "put": {
+        "summary": "Atualizar webhook",
+        "tags": ["Webhooks"],
+        "description": "Atualiza um webhook existente.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "wid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string", "description": "Nova URL" },
+                  "events": { "type": "string", "description": "Novos eventos (separados por vírgula ou '*')" },
+                  "enabled": { "type": "boolean", "description": "Ativar/desativar" },
+                  "secret": { "type": "string", "description": "Novo segredo" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook atualizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remover webhook",
+        "tags": ["Webhooks"],
+        "description": "Remove um webhook da sessão.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "wid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Webhook removido" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/webhooks/{wid}/test": {
+      "post": {
+        "summary": "Testar webhook",
+        "tags": ["Webhooks"],
+        "description": "Envia um evento de teste para o webhook, sem aguardar por eventos reais.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "wid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado do teste",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },

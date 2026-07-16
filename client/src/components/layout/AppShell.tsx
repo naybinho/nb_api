@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from "react";
-import { BookOpen, Menu, PhoneCall, Server } from "lucide-react";
+import { BookOpen, Menu, PhoneCall, QrCode, Server } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "./ThemeToggle";
 import { cn } from "@/lib/utils";
 
-export type ViewType = "calls" | "instancias";
+export type ViewType = "calls" | "instancias" | "pix";
 
 export const AppShell = ({ children, view, onViewChange }: { children: ReactNode; view: ViewType; onViewChange: (v: ViewType) => void }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -51,6 +51,16 @@ export const AppShell = ({ children, view, onViewChange }: { children: ReactNode
           >
             <PhoneCall className="h-4 w-4" />
             Chamadas
+          </button>
+          <button
+            onClick={() => onViewChange("pix")}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              view === "pix" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <QrCode className="h-4 w-4" />
+            PIX
           </button>
           <a
             href="/swagger"

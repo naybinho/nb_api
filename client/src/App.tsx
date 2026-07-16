@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppShell, type ViewType } from "@/components/layout/AppShell";
 import { CallsPage } from "@/pages/CallsPage";
 import { InstanciasPage } from "@/pages/InstanciasPage";
+import { PixSender } from "@/components/domain/pix/PixSender";
 import { SessionPairing } from "@/components/domain/session/SessionPairing";
 import { SessionHeader } from "@/components/domain/session/SessionHeader";
 import { IncomingCallModal } from "@/components/domain/call/IncomingCallModal";
@@ -40,7 +41,13 @@ export const App = () => {
         ) : active ? (
           <div className="space-y-6">
             <SessionHeader session={active} />
-            {active.paired ? <CallsPage sid={active.id} /> : <SessionPairing session={active} />}
+            {view === "pix" ? (
+              <PixSender sid={active.id} />
+            ) : active.paired ? (
+              <CallsPage sid={active.id} />
+            ) : (
+              <SessionPairing session={active} />
+            )}
           </div>
         ) : (
           <EmptyState title="Select an account" description="Choose an account from the sidebar." />

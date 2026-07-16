@@ -6,7 +6,7 @@
 
 Este projeto oferece uma solução robusta de API conectada diretamente ao WhatsApp, permitindo envio de mensagens, gerenciamento de grupos, visualização de histórico e realização de chamadas de voz (VoIP) diretamente do navegador.
 
-[![Version](https://img.shields.io/badge/Version-1.0.6-blue)](https://github.com/naybinho/nb_api)
+[![Version](https://img.shields.io/badge/Version-1.0.7-blue)](https://github.com/naybinho/nb_api)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791?logo=postgresql&logoColor=white)](https://postgresql.org)
@@ -189,6 +189,9 @@ Todas as rotas baseadas em ação (exceto `GET /api/events` e `/swagger`) ocorre
 | | `DELETE` | `/api/sessions/{sid}/messages/{id}` | Revoga/exclui uma mensagem |
 | | `POST` | `/api/sessions/{sid}/messages/{id}/read` | Marca mensagem como lida |
 | | `GET` | `/api/sessions/{sid}/media/{id}` | Baixa mídia de uma mensagem |
+| **PIX** | `POST` | `/api/sessions/{sid}/messages/pix` | Envia PIX via WhatsApp (QR Code + texto) |
+| | `POST` | `/api/pix/generate` | Gera QR Code PIX (pré-visualização, sem enviar) |
+| | `POST` | `/api/pix/validate` | Valida chave PIX (CPF/CNPJ com dígitos verificadores) |
 | **Grupos** | `GET` | `/api/sessions/{sid}/groups` | Lista grupos da sessão |
 | | `POST` | `/api/sessions/{sid}/groups` | Cria um grupo |
 | | `GET` | `/api/sessions/{sid}/groups/{gid}` | Obtém informações do grupo |
@@ -221,9 +224,6 @@ Todas as rotas baseadas em ação (exceto `GET /api/events` e `/swagger`) ocorre
 | | `DELETE` | `/api/sessions/{sid}/newsletters/{jid}` | Deixa de seguir newsletter |
 | | `POST` | `/api/sessions/{sid}/newsletters/{jid}/mute` | Alterna mute da newsletter |
 | **Eventos** | `GET` | `/api/events` | Stream SSE em tempo real |
-| **PIX** | `POST` | `/api/sessions/{sid}/messages/pix` | Envia PIX via WhatsApp (QR Code + texto) |
-| | `POST` | `/api/pix/generate` | Gera QR Code PIX (pré-visualização, sem enviar) |
-| | `POST` | `/api/pix/validate` | Valida chave PIX (CPF/CNPJ com dígitos verificadores) |
 
 ### SID (Session ID)
 
@@ -685,6 +685,22 @@ O servidor limita o número de chamadas simultâneas por sessão conforme a flag
 ---
 
 ## � Changelog
+### v1.0.7 (2026-07-16)
+- 🌐 **Webhooks**: Sistema completo de webhooks para integração externa
+  - Novo endpoint `GET /api/sessions/{sid}/webhooks` — Listar webhooks de uma sessão
+  - Novo endpoint `POST /api/sessions/{sid}/webhooks` — Criar novo webhook
+  - Novo endpoint `PUT /api/sessions/{sid}/webhooks/{wid}` — Atualizar webhook
+  - Novo endpoint `DELETE /api/sessions/{sid}/webhooks/{wid}` — Remover webhook
+  - Novo endpoint `POST /api/sessions/{sid}/webhooks/{wid}/test` — Testar disparo do webhook
+  - Disparo assíncrono com HMAC-SHA256, retry com backoff (3 tentativas)
+  - Eventos filtráveis: message, message-receipt, presence, call-status, incoming, call-ended
+  - Interface de gerenciamento no frontend (adicionar, editar, excluir, testar)
+  - Documentação completa no Swagger
+- 💳 **Menu PIX**: Separado do menu Chamadas, agora com aba dedicada no frontend
+  - Nova rota PIX separada das chamadas no backend
+  - Menu "PIX" independente na interface
+- 📖 **Swagger**: Tags organizadas com ordem definida para melhor navegação
+
 ### v1.0.6 (2026-07-15)
 - 🧩 **Fallback para WhatsApp Web**: Adicionado parâmetro `asText` nos endpoints de listas interativas
   - Novo campo `asText` (booleano) em `POST /api/sessions/{sid}/messages/list` e `POST /api/sessions/{sid}/messages/list-interactive`

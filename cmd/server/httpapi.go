@@ -31,7 +31,6 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("POST /api/sessions/{sid}/messages", s.handleSendMessage) // Accepts form-data or JSON (for text, media, etc)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/text", s.handleSendText)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/media", s.handleSendMedia) // image, video, audio, document, sticker
-	mux.HandleFunc("POST /api/sessions/{sid}/messages/pix", s.handleSendPix)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/location", s.handleSendLocation)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/contact", s.handleSendContact)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/list", s.handleSendList)
@@ -44,6 +43,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("GET /api/sessions/{sid}/media/{id}", s.handleDownloadMedia)
 
 	// PIX
+	mux.HandleFunc("POST /api/sessions/{sid}/messages/pix", s.handleSendPix)
 	mux.HandleFunc("POST /api/pix/generate", s.handleGeneratePix)
 	mux.HandleFunc("POST /api/pix/validate", s.handleValidatePixKey)
 
@@ -88,6 +88,13 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/sessions/{sid}/newsletters/{jid}", s.handleUnfollowNewsletter)
 	mux.HandleFunc("PUT /api/sessions/{sid}/newsletters/{jid}", s.handleUpdateNewsletter)
 	mux.HandleFunc("POST /api/sessions/{sid}/newsletters/{jid}/mute", s.handleMuteNewsletter)
+
+	// Webhooks
+	mux.HandleFunc("GET /api/sessions/{sid}/webhooks", s.handleListWebhooks)
+	mux.HandleFunc("POST /api/sessions/{sid}/webhooks", s.handleCreateWebhook)
+	mux.HandleFunc("PUT /api/sessions/{sid}/webhooks/{wid}", s.handleUpdateWebhook)
+	mux.HandleFunc("DELETE /api/sessions/{sid}/webhooks/{wid}", s.handleDeleteWebhook)
+	mux.HandleFunc("POST /api/sessions/{sid}/webhooks/{wid}/test", s.handleTestWebhook)
 
 	mux.HandleFunc("GET /api/events", s.handleEvents)
 

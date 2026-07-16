@@ -23,6 +23,8 @@ type server struct {
 	authPassword string
 	natIP        string
 	swaggerURL   string
+	webhookStore      *webhookStore
+	webhookDispatcher *WebhookDispatcher
 }
 
 func openDB() (*sql.DB, error) {
@@ -83,15 +85,25 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, swag
 	mgr := newSessionManager(ctx, container, broker, store, waLogger, log, maxCalls)
 	broker.SnapshotFn = mgr.snapshotEvents
 
+	whStore, err := newWebhookStore(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	whDispatcher := newWebhookDispatcher(whStore, log)
+	broker.WebhookSink = whDispatcher.Sink()
+	whDispatcher.Start(ctx)
+
 	return &server{
-		broker:       broker,
-		sessions:     mgr,
-		log:          log,
-		staticDir:    staticDir,
-		redis:        rdb,
-		authUsername: os.Getenv("AUTH_USERNAME"),
-		authPassword: os.Getenv("AUTH_PASSWORD"),
-		natIP:        os.Getenv("EXTERNAL_IP"),
-		swaggerURL:   swaggerURL,
+		broker:            broker,
+		sessions:          mgr,
+		log:               log,
+		staticDir:         staticDir,
+		redis:             rdb,
+		authUsername:      os.Getenv("AUTH_USERNAME"),
+		authPassword:      os.Getenv("AUTH_PASSWORD"),
+		natIP:             os.Getenv("EXTERNAL_IP"),
+		swaggerURL:        swaggerURL,
+		webhookStore:      whStore,
+		webhookDispatcher: whDispatcher,
 	}, nil
 }

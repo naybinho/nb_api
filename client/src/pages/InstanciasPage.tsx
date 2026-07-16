@@ -1,11 +1,13 @@
 import { useCallback, useState } from "react";
-import { Check, Copy, Eye, EyeOff, RefreshCw } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, RefreshCw, WebhookIcon, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { useSessions } from "@/stores/sessions";
 import { updateSessionAPIKey, updateSessionName } from "@/services/sessions";
+import { WebhookManager } from "@/components/domain/webhook/WebhookManager";
 import type { SessionInfo, SessionState } from "@/types/session";
 
 const statusLabel: Record<SessionState, string> = {
@@ -28,6 +30,7 @@ export const InstanciasPage = () => {
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [expandedWebhooks, setExpandedWebhooks] = useState<Set<string>>(new Set());
 
   const copyApiKey = useCallback(async (apiKey: string, sessionId: string) => {
     try {
@@ -163,6 +166,34 @@ export const InstanciasPage = () => {
                     <RefreshCw className="h-3.5 w-3.5" />
                   </Button>
                 </div>
+              </div>
+              <Separator className="my-2" />
+              <div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedWebhooks((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(s.id)) next.delete(s.id);
+                      else next.add(s.id);
+                      return next;
+                    })
+                  }
+                  className="flex w-full items-center gap-2 rounded-md px-0 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {expandedWebhooks.has(s.id) ? (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  )}
+                  <WebhookIcon className="h-3.5 w-3.5" />
+                  Webhooks
+                </button>
+                {expandedWebhooks.has(s.id) && (
+                  <div className="pt-2">
+                    <WebhookManager sid={s.id} />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -4,7 +4,6 @@ import { Dialer } from "@/components/domain/call/Dialer";
 import { CallCard } from "@/components/domain/call/CallCard";
 import { OtherCallsList } from "@/components/domain/call/OtherCallsList";
 import { HistoryDrawer } from "@/components/domain/history/HistoryDrawer";
-import { PixSender } from "@/components/domain/pix/PixSender";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { isMine, useCalls } from "@/stores/calls";
 
@@ -30,7 +29,6 @@ export const CallsPage = ({ sid }: { sid: string }) => {
         <HistoryDrawer sid={sid} />
       </div>
       <Dialer sid={sid} />
-      <PixSender sid={sid} />
       {mine.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {mine.map((c) => (
