@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,21 +41,51 @@ type AudioRecorder struct {
 	useSSL    bool
 }
 
+// cleanEndpoint strips the scheme from an S3 endpoint URL and returns the
+// cleaned host and whether it should use SSL.
+func cleanEndpoint(raw string) (host string, useSSL bool) {
+	host = raw
+	useSSL = true
+
+	// Detect scheme and strip it, setting SSL accordingly
+	if len(raw) > 8 && raw[:8] == "https://" {
+		host = raw[8:]
+		useSSL = true
+	} else if len(raw) > 7 && raw[:7] == "http://" {
+		host = raw[7:]
+		useSSL = false
+	}
+
+	// Remove trailing slash if present
+	host = strings.TrimRight(host, "/")
+
+	// Allow explicit override via S3_SSL env var
+	sslOverride := os.Getenv("S3_SSL")
+	if sslOverride == "true" {
+		useSSL = true
+	} else if sslOverride == "false" {
+		useSSL = false
+	}
+
+	return
+}
+
 // NewRecorder creates a new AudioRecorder for a call. It returns nil if S3 is
 // not configured (env vars missing) so callers can safely ignore recording.
 func NewRecorder(log *slog.Logger, sessionID, callID string) *AudioRecorder {
-	endpoint := os.Getenv("S3_ENDPOINT")
+	rawEndpoint := os.Getenv("S3_ENDPOINT")
 	accessKey := os.Getenv("S3_ACCESS_KEY")
 	secretKey := os.Getenv("S3_SECRET_KEY")
 	bucket := os.Getenv("S3_BUCKET")
 	region := os.Getenv("S3_REGION")
+	pathStyleStr := os.Getenv("S3_PATH_STYLE")
 	if region == "" {
 		region = "us-east-1"
 	}
 
-	if endpoint == "" || accessKey == "" || secretKey == "" || bucket == "" {
+	if rawEndpoint == "" || accessKey == "" || secretKey == "" || bucket == "" {
 		log.Debug("S3 not configured, recording disabled",
-			"endpoint", endpoint != "",
+			"endpoint", rawEndpoint != "",
 			"accessKey", accessKey != "",
 			"secretKey", secretKey != "",
 			"bucket", bucket != "",
@@ -62,15 +93,28 @@ func NewRecorder(log *slog.Logger, sessionID, callID string) *AudioRecorder {
 		return nil
 	}
 
-	useSSL := true
-	if os.Getenv("S3_SSL") == "false" {
-		useSSL = false
+	// Clean endpoint: strip scheme, detect SSL
+	endpoint, useSSL := cleanEndpoint(rawEndpoint)
+
+	// Determine path-style vs virtual-hosted-style (default: true for MinIO-like compat)
+	pathStyle := true
+	if pathStyleStr == "false" {
+		pathStyle = false
 	}
 
+	log.Info("initializing S3 recorder",
+		"endpoint", endpoint,
+		"bucket", bucket,
+		"region", region,
+		"useSSL", useSSL,
+		"pathStyle", pathStyle,
+	)
+
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: useSSL,
-		Region: region,
+		Creds:     credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure:    useSSL,
+		Region:    region,
+		BucketLookup: getBucketLookup(pathStyle),
 	})
 	if err != nil {
 		log.Warn("failed to create S3 client, recording disabled", "err", err)
@@ -80,11 +124,18 @@ func NewRecorder(log *slog.Logger, sessionID, callID string) *AudioRecorder {
 	// Ensure bucket exists
 	ctx := context.Background()
 	exists, err := client.BucketExists(ctx, bucket)
-	if err != nil || !exists {
+	if err != nil {
+		log.Warn("failed to check S3 bucket existence, recording disabled",
+			"err", err, "bucket", bucket)
+		return nil
+	}
+	if !exists {
 		if err := client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{Region: region}); err != nil {
-			log.Warn("failed to create S3 bucket, recording disabled", "err", err)
+			log.Warn("failed to create S3 bucket, recording disabled",
+				"err", err, "bucket", bucket)
 			return nil
 		}
+		log.Info("created S3 bucket", "bucket", bucket)
 	}
 
 	return &AudioRecorder{
@@ -102,6 +153,14 @@ func NewRecorder(log *slog.Logger, sessionID, callID string) *AudioRecorder {
 		secretKey: secretKey,
 		useSSL:    useSSL,
 	}
+}
+
+// getBucketLookup returns the appropriate BucketLookupType based on path style.
+func getBucketLookup(pathStyle bool) minio.BucketLookupType {
+	if pathStyle {
+		return minio.BucketLookupPath
+	}
+	return minio.BucketLookupDNS
 }
 
 // WritePeerAudio records PCM audio received from the WhatsApp peer (incoming).
@@ -292,14 +351,13 @@ func buildWAV(pcmData []byte) *bytes.Buffer {
 // RecordingURL returns the S3 URL for a given object path.
 // This can be used to generate URLs for existing recordings.
 func RecordingURL(endpoint, bucket, objectPath string) string {
-	useSSL := true
-	if os.Getenv("S3_SSL") == "false" {
-		useSSL = false
+	// Clean the endpoint (strip scheme) and detect SSL
+	cleanHost, useSSL := cleanEndpoint(endpoint)
+	scheme := "https"
+	if !useSSL {
+		scheme = "http"
 	}
-	if useSSL {
-		return fmt.Sprintf("https://%s/%s/%s", endpoint, bucket, objectPath)
-	}
-	return fmt.Sprintf("http://%s/%s/%s", endpoint, bucket, objectPath)
+	return fmt.Sprintf("%s://%s/%s/%s", scheme, cleanHost, bucket, objectPath)
 }
 
 

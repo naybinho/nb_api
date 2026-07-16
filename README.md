@@ -94,9 +94,10 @@ AUTH_PASSWORD=admin123
 # S3_BUCKET=nb_api-recordings
 # S3_REGION=us-east-1
 # S3_SSL=true
+# S3_PATH_STYLE=true
 ```
 
-> **Nota:** Se `AUTH_USERNAME` estiver vazio, a autenticação é desabilitada. As variáveis S3 são opcionais — se não configuradas, a gravação de chamadas será automaticamente desabilitada.
+> **Nota:** Se `AUTH_USERNAME` estiver vazio, a autenticação é desabilitada. As variáveis S3 são opcionais — se não configuradas, a gravação de chamadas será automaticamente desabilitada. O endpoint S3 deve ser informado sem o prefixo `https://` (use `S3_SSL` para controlar HTTP/HTTPS). Para serviços como MinIO, mantenha `S3_PATH_STYLE=true`.
 
 ### Flags do Servidor
 
