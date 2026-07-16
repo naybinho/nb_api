@@ -2,7 +2,10 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 //go:embed swagger.json
@@ -49,6 +52,58 @@ func (s *server) handleSwaggerUI(w http.ResponseWriter, r *http.Request) {
 func (s *server) handleSwaggerJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	// Parse the embedded swagger spec
+	var spec map[string]any
+	if err := json.Unmarshal(swaggerSpec, &spec); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"failed to parse swagger spec"}`))
+		return
+	}
+
+	var servers []map[string]string
+
+	if s.swaggerURL != "" {
+		// Use the configured URL (from flag or SWAGGER_URL env var)
+		servers = []map[string]string{
+			{"url": s.swaggerURL, "description": "Servidor configurado"},
+			{"url": "http://localhost:8081", "description": "Desenvolvimento (dev)"},
+			{"url": "http://localhost:8080", "description": "Produção (Docker)"},
+		}
+	} else {
+		// Dynamic detection from the request
+		scheme := "http"
+		if r.TLS != nil {
+			scheme = "https"
+		}
+		if fwd := r.Header.Get("X-Forwarded-Proto"); fwd != "" {
+			scheme = strings.Split(fwd, ",")[0]
+		}
+		host := r.Host
+		if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
+			host = strings.Split(fwdHost, ",")[0]
+		}
+		if host == "" {
+			host = "localhost:8080"
+		}
+		dynamicURL := fmt.Sprintf("%s://%s", scheme, host)
+		servers = []map[string]string{
+			{"url": dynamicURL, "description": fmt.Sprintf("Atual (%s)", host)},
+			{"url": "http://localhost:8081", "description": "Desenvolvimento (dev)"},
+			{"url": "http://localhost:8080", "description": "Produção (Docker)"},
+		}
+	}
+
+	spec["servers"] = servers
+
+	// Re-encode preserving the original formatting (2-space indent)
+	result, err := json.MarshalIndent(spec, "", "  ")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"failed to encode swagger spec"}`))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(swaggerSpec)
+	_, _ = w.Write(result)
 }

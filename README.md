@@ -99,6 +99,7 @@ O binário do servidor (`cmd/server`) aceita as seguintes flags na linha de coma
 | `-static` | `client/dist` | Diretório com os arquivos estáticos do frontend |
 | `-debug` | `false` | Habilita logs verbosos para depuração |
 | `-max-calls-per-session` | `8` | Limite de chamadas simultâneas por sessão (`0` = ilimitado) |
+| `-swagger-url` | `""` | URL pública do servidor para o Swagger (ex: `http://192.168.1.100:8080`). Se vazio, tenta detectar automaticamente. Também lê da variável de ambiente `SWAGGER_URL`. |
 
 ---
 

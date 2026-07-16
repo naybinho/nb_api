@@ -20,10 +20,17 @@ func main() {
 	staticDir := flag.String("static", "client/dist", "static client directory (optional)")
 	debug := flag.Bool("debug", false, "verbose logging")
 	maxCalls := flag.Int("max-calls-per-session", 8, "max concurrent calls per session (0 = unlimited)")
+	swaggerURL := flag.String("swagger-url", "", "Swagger server URL (ex: http://192.168.1.100:8080)")
 	flag.Parse()
 
 	// Load .env file
 	_ = godotenv.Load()
+
+	// Swagger URL: flag > env var > empty (dynamic detection)
+	swagURL := *swaggerURL
+	if swagURL == "" {
+		swagURL = os.Getenv("SWAGGER_URL")
+	}
 
 	level := slog.LevelInfo
 	if *debug {
@@ -35,7 +42,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	srv, err := newServer(ctx, *dbPath, *staticDir, *maxCalls, log)
+	srv, err := newServer(ctx, *dbPath, *staticDir, *maxCalls, swagURL, log)
 	if err != nil {
 		log.Error("startup failed", "err", err)
 		os.Exit(1)

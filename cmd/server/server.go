@@ -21,7 +21,8 @@ type server struct {
 	redis        *redis.Client
 	authUsername string
 	authPassword string
-	natIP        string // IP externo para ICE candidates (Docker)
+	natIP        string
+	swaggerURL   string
 }
 
 func openDB() (*sql.DB, error) {
@@ -57,7 +58,7 @@ func initRedis() *redis.Client {
 	return rdb
 }
 
-func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log *slog.Logger) (*server, error) {
+func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, swaggerURL string, log *slog.Logger) (*server, error) {
 	db, err := openDB()
 	if err != nil {
 		return nil, err
@@ -91,5 +92,6 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, log 
 		authUsername: os.Getenv("AUTH_USERNAME"),
 		authPassword: os.Getenv("AUTH_PASSWORD"),
 		natIP:        os.Getenv("EXTERNAL_IP"),
+		swaggerURL:   swaggerURL,
 	}, nil
 }
