@@ -694,6 +694,13 @@ O servidor limita o número de chamadas simultâneas por sessão conforme a flag
 ---
 
 ## � Changelog
+### v1.0.8 (2026-07-16)
+- 🎙️ **Gravação de Chamadas**: Ative a gravação com um clique — o áudio é capturado em PCM, mixado (microfone + peer), convertido para WAV e enviado para armazenamento **S3-compatible** (MinIO, AWS S3, etc.)
+- 🗄️ **Histórico Persistente**: Histórico de chamadas agora é salvo permanentemente no PostgreSQL — nunca é perdido mesmo reiniciando o servidor
+- ▶️ **Player de Gravação**: Painel de histórico exibe status da gravação e botão de play para ouvir diretamente no navegador
+- ☁️ **S3 Configurável**: Suporte a qualquer serviço compatível com S3 via variáveis de ambiente (`S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION`, `S3_SSL`)
+- 🔌 **Nova dependência**: Adicionado `github.com/minio/minio-go/v7 v7.2.1` (cliente S3)
+
 ### v1.0.7 (2026-07-16)
 - 🌐 **Webhooks**: Sistema completo de webhooks para integração externa
   - Novo endpoint `GET /api/sessions/{sid}/webhooks` — Listar webhooks de uma sessão
