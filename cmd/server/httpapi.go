@@ -292,7 +292,15 @@ func (s *server) handleEndCall(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) handleHistory(w http.ResponseWriter, r *http.Request) {
 	if sess := s.sessionByID(w, r.PathValue("sid")); sess != nil {
-		writeJSON(w, http.StatusOK, map[string]any{"rows": s.broker.historyRows(sess.id, 50)})
+		// Query from PostgreSQL for persistent history
+		rows, err := s.callHistory.listBySession(r.Context(), sess.id, 50)
+		if err != nil {
+			s.log.Error("failed to list call history", "err", err)
+			// Fallback to in-memory history if DB fails
+			writeJSON(w, http.StatusOK, map[string]any{"rows": s.broker.historyRows(sess.id, 50)})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"rows": rows})
 	}
 }
 
@@ -332,7 +340,7 @@ func (s *server) doStartCall(sess *Session, w http.ResponseWriter, r *http.Reque
 	}
 	s.broker.upsertCall(CallRecord{
 		SessionID: sess.id, CallID: callID, Owner: &owner, Direction: "outbound", Peer: peer.String(),
-		StartedAt: time.Now().UnixMilli(), Status: StatusRinging,
+		StartedAt: time.Now().UnixMilli(), Status: StatusRinging, Recorded: body.Record,
 	})
 	writeJSON(w, http.StatusOK, map[string]any{"call": map[string]string{"callId": callID}})
 }
@@ -357,8 +365,24 @@ func (s *server) doWebRTC(sess *Session, w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Check if this call should be recorded
+	shouldRecord := false
+	if rec, ok := s.broker.getCall(callID); ok {
+		shouldRecord = rec.Recorded
+	}
+	if shouldRecord {
+		recorder := NewRecorder(s.log, sess.id, callID)
+		if recorder != nil {
+			ac.recorder = recorder
+		}
+	}
+
 	bridge.OnBrowserPCM = func(pcm []float32) {
 		ac.cm.FeedCapturedPCM(pcm)
+		// Record mic audio if recording is enabled
+		if ac.recorder != nil {
+			ac.recorder.WriteMicAudio(pcm)
+		}
 	}
 	bridge.OnTerminalICE = func() {
 		go sess.terminateCall(callID, core.EndCallReasonUserEnded)

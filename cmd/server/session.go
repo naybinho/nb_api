@@ -91,10 +91,17 @@ func (s *Session) wireCall(cm *call.CallManager, callID string) {
 	}
 	cm.OnPeerAudio = func(pcm16 []float32) {
 		ac, ok := s.reg.get(callID)
-		if !ok || ac.bridge == nil {
+		if !ok {
 			return
 		}
-		_ = ac.bridge.WritePCM(pcm16)
+		// Send peer audio to browser
+		if ac.bridge != nil {
+			_ = ac.bridge.WritePCM(pcm16)
+		}
+		// Record peer audio if recording is enabled
+		if ac.recorder != nil {
+			ac.recorder.WritePeerAudio(pcm16)
+		}
 	}
 }
 
@@ -258,6 +265,23 @@ func (s *Session) removeCall(callID string) {
 	}
 	if ac.bridge != nil {
 		ac.bridge.Close()
+	}
+	// Finalize recording and upload to S3
+	if ac.recorder != nil {
+		recordingURL := ac.recorder.Close()
+		if recordingURL != "" {
+			// Update the broker's call record with the recording URL
+			if rec, ok := s.mgr.broker.getCall(callID); ok {
+				rec.RecordingURL = recordingURL
+				s.mgr.broker.upsertCall(*rec)
+			}
+			// Also update the persisted history record directly
+			if s.mgr.broker.HistoryStore != nil {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				_ = s.mgr.broker.HistoryStore.updateRecordingURL(ctx, callID, recordingURL)
+			}
+		}
 	}
 }
 

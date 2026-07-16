@@ -19,3 +19,11 @@ services:
       AUTH_USERNAME: admin
       AUTH_PASSWORD: admin123
       SWAGGER_URL: "http://192.168.1.100:8080"
+
+      # S3-compatible Storage (opcional - para gravação de chamadas)
+      # S3_ENDPOINT: s3.us-east-1.amazonaws.com
+      # S3_ACCESS_KEY: sua_access_key
+      # S3_SECRET_KEY: sua_secret_key
+      # S3_BUCKET: nb_api-recordings
+      # S3_REGION: us-east-1
+      # S3_SSL: "true"

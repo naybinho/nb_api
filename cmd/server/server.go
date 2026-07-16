@@ -25,6 +25,7 @@ type server struct {
 	swaggerURL   string
 	webhookStore      *webhookStore
 	webhookDispatcher *WebhookDispatcher
+	callHistory       *callHistoryStore
 }
 
 func openDB() (*sql.DB, error) {
@@ -93,6 +94,12 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, swag
 	broker.WebhookSink = whDispatcher.Sink()
 	whDispatcher.Start(ctx)
 
+	callHistory, err := newCallHistoryStore(ctx, db)
+	if err != nil {
+		return nil, err
+	}
+	broker.HistoryStore = callHistory
+
 	return &server{
 		broker:            broker,
 		sessions:          mgr,
@@ -105,5 +112,6 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, swag
 		swaggerURL:        swaggerURL,
 		webhookStore:      whStore,
 		webhookDispatcher: whDispatcher,
+		callHistory:       callHistory,
 	}, nil
 }

@@ -11,6 +11,8 @@ type CallListRow = {
   status: CallStatus;
   endedAt?: number;
   endReason?: string;
+  recorded: boolean;
+  recordingUrl?: string;
 };
 
 export type BrokerEvent =

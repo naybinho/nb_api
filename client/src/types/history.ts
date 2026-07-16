@@ -5,4 +5,6 @@ export type HistoryRow = {
   startedAt: number;
   endedAt: number | null;
   endReason: string | null;
+  recorded: boolean;
+  recordingUrl: string;
 };

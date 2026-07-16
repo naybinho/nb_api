@@ -6,7 +6,7 @@
 
 Este projeto oferece uma solução robusta de API conectada diretamente ao WhatsApp, permitindo envio de mensagens, gerenciamento de grupos, visualização de histórico e realização de chamadas de voz (VoIP) diretamente do navegador.
 
-[![Version](https://img.shields.io/badge/Version-1.0.7-blue)](https://github.com/naybinho/nb_api)
+[![Version](https://img.shields.io/badge/Version-1.0.8-blue)](https://github.com/naybinho/nb_api/releases/tag/v1.0.8)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791?logo=postgresql&logoColor=white)](https://postgresql.org)
@@ -21,6 +21,7 @@ Este projeto oferece uma solução robusta de API conectada diretamente ao Whats
 
 - **Multi-Sessões:** Conecte múltiplas contas de WhatsApp lendo o QR Code diretamente pela interface. As sessões são restauradas automaticamente ao reiniciar o servidor.
 - **Chamadas de Voz Nativas:** Faça e receba chamadas de voz diretamente pelo navegador. O áudio do microfone trafega via WebRTC para o servidor Go, que encoda nativamente (MLow) e repassa para a rede do WhatsApp (SRTP).
+- **Gravação de Chamadas:** Ative a gravação de chamadas com um clique — o áudio é capturado em PCM, mixado (microfone + peer), convertido para WAV e enviado para armazenamento S3 (compatível com MinIO, AWS S3, etc.). O histórico de chamadas fica salvo permanentemente no PostgreSQL.
 - **Gestão Completa de Sessões:** Criação, logout, re-pareamento (QR Code), atualização de nome e chave de API (API Key) por sessão.
 - **Pagamentos PIX:** Geração de QR Code PIX estático (EMV), envio do código copia e cola e/ou imagem do QR Code via WhatsApp, suporte a todos os tipos de chave (CPF, CNPJ, telefone, e-mail, aleatória), validação de chaves (CPF/CNPJ com dígitos verificadores) e valor opcional.
 - **Mensagens Avançadas:** Envio de texto, mídia (fotos, áudios, vídeos, documentos, stickers), localização, contatos, listas interativas (quick_reply), listas dropdown, enquetes, reações, edição e revogação de mensagens, marcação de leitura e download de mídia.
@@ -85,9 +86,17 @@ REDIS_DB=0
 # Autenticação da API (Basic Auth)
 AUTH_USERNAME=admin
 AUTH_PASSWORD=admin123
+
+# S3-compatible Storage (para gravação de chamadas)
+# S3_ENDPOINT=s3.us-east-1.amazonaws.com
+# S3_ACCESS_KEY=sua_access_key
+# S3_SECRET_KEY=sua_secret_key
+# S3_BUCKET=nb_api-recordings
+# S3_REGION=us-east-1
+# S3_SSL=true
 ```
 
-> **Nota:** Se `AUTH_USERNAME` estiver vazio, a autenticação é desabilitada.
+> **Nota:** Se `AUTH_USERNAME` estiver vazio, a autenticação é desabilitada. As variáveis S3 são opcionais — se não configuradas, a gravação de chamadas será automaticamente desabilitada.
 
 ### Flags do Servidor
 
@@ -170,12 +179,12 @@ Todas as rotas baseadas em ação (exceto `GET /api/events` e `/swagger`) ocorre
 | | `POST` | `/api/sessions/{sid}/pair` | Reinicia o pareamento (novo QR Code) |
 | | `PUT` | `/api/sessions/{sid}/apikey` | Atualiza a chave de API da sessão |
 | | `PUT` | `/api/sessions/{sid}/name` | Renomeia a sessão |
-| **Chamadas** | `POST` | `/api/sessions/{sid}/calls` | Inicia uma chamada de voz (VoIP) |
+| **Chamadas** | `POST` | `/api/sessions/{sid}/calls` | Inicia uma chamada de voz (VoIP). Body: `{"phone": "...", "record": true/false}` |
 | | `POST` | `/api/sessions/{sid}/calls/{id}/webrtc` | Inicia o fluxo WebRTC para uma chamada |
 | | `POST` | `/api/sessions/{sid}/calls/{id}/accept` | Aceita uma chamada recebida |
 | | `POST` | `/api/sessions/{sid}/calls/{id}/reject` | Rejeita uma chamada recebida |
 | | `DELETE` | `/api/sessions/{sid}/calls/{id}` | Encerra uma chamada |
-| | `GET` | `/api/sessions/{sid}/history` | Histórico de chamadas da sessão |
+| | `GET` | `/api/sessions/{sid}/history` | Histórico de chamadas da sessão (persistente no PostgreSQL) |
 | **Mensagens** | `POST` | `/api/sessions/{sid}/messages` | Dispatcher genérico (texto/mídia/localização/contato/lista) |
 | | `POST` | `/api/sessions/{sid}/messages/text` | Envia mensagem de texto |
 | | `POST` | `/api/sessions/{sid}/messages/media` | Envia mídia (imagem/vídeo/áudio/documento/sticker) |

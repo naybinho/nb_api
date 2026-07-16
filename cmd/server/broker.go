@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -17,15 +18,17 @@ const (
 )
 
 type CallRecord struct {
-	SessionID string     `json:"sessionId"`
-	CallID    string     `json:"callId"`
-	Owner     *string    `json:"owner"`
-	Direction string     `json:"direction"`
-	Peer      string     `json:"peer"`
-	StartedAt int64      `json:"startedAt"`
-	Status    CallStatus `json:"status"`
-	EndedAt   *int64     `json:"endedAt,omitempty"`
-	EndReason string     `json:"endReason,omitempty"`
+	SessionID    string     `json:"sessionId"`
+	CallID       string     `json:"callId"`
+	Owner        *string    `json:"owner"`
+	Direction    string     `json:"direction"`
+	Peer         string     `json:"peer"`
+	StartedAt    int64      `json:"startedAt"`
+	Status       CallStatus `json:"status"`
+	EndedAt      *int64     `json:"endedAt,omitempty"`
+	EndReason    string     `json:"endReason,omitempty"`
+	Recorded     bool       `json:"recorded"`
+	RecordingURL string     `json:"recordingUrl,omitempty"`
 }
 
 type AuthSnapshot struct {
@@ -54,8 +57,9 @@ type Broker struct {
 	calls   map[string]*CallRecord
 	history []CallRecord
 
-	SnapshotFn  func() []any
-	WebhookSink func(data []byte) // optional, non-blocking dispatch to webhooks
+	SnapshotFn   func() []any
+	WebhookSink  func(data []byte) // optional, non-blocking dispatch to webhooks
+	HistoryStore *callHistoryStore // optional, persisted call history
 }
 
 func NewBroker() *Broker {
@@ -187,6 +191,30 @@ func (b *Broker) endCall(id, reason string) {
 		"type": "call-ended", "sessionId": sessionID, "id": id, "owner": owner, "reason": reason, "endedAt": now,
 	})
 	b.broadcastCallList()
+
+	// Persist call history to PostgreSQL
+	if b.HistoryStore != nil {
+		histRow := &CallHistoryRow{
+			CallID:       ended.CallID,
+			SessionID:    ended.SessionID,
+			Peer:         ended.Peer,
+			Direction:    ended.Direction,
+			StartedAt:    ended.StartedAt,
+			EndedAt:      ended.EndedAt,
+			EndReason:    ended.EndReason,
+			Recorded:     ended.Recorded,
+			RecordingURL: ended.RecordingURL,
+		}
+		// Use a background context to avoid blocking the broker
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if err := b.HistoryStore.insert(ctx, histRow); err != nil {
+				// Log error but don't block — history persistence is best-effort
+				_ = err
+			}
+		}()
+	}
 }
 
 func (b *Broker) broadcastCallList() {

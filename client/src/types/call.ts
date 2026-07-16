@@ -8,6 +8,8 @@ export type CallSummary = {
   peer: string;
   startedAt: number;
   status: CallStatus;
+  recorded: boolean;
+  recordingUrl?: string;
 };
 
 export type IncomingPayload = { sessionId: string; callId: string; peer: string; offeredAt: number };
