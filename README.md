@@ -6,7 +6,7 @@
 
 Este projeto oferece uma solução robusta de API conectada diretamente ao WhatsApp, permitindo envio de mensagens, gerenciamento de grupos, visualização de histórico e realização de chamadas de voz (VoIP) diretamente do navegador.
 
-[![Version](https://img.shields.io/badge/Version-1.0.5-blue)](https://github.com/naybinho/nb_api)
+[![Version](https://img.shields.io/badge/Version-1.0.6-blue)](https://github.com/naybinho/nb_api)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791?logo=postgresql&logoColor=white)](https://postgresql.org)
@@ -685,6 +685,13 @@ O servidor limita o número de chamadas simultâneas por sessão conforme a flag
 ---
 
 ## � Changelog
+### v1.0.6 (2026-07-15)
+- 🧩 **Fallback para WhatsApp Web**: Adicionado parâmetro `asText` nos endpoints de listas interativas
+  - Novo campo `asText` (booleano) em `POST /api/sessions/{sid}/messages/list` e `POST /api/sessions/{sid}/messages/list-interactive`
+  - Quando `true`, envia as opções como texto plano formatado com numeração, evitando o erro "Could not load message" no WhatsApp Web
+  - Ideal para destinatários que não renderizam botões interativos corretamente
+- 📖 **Swagger**: Documentado o parâmetro `asText` nos schemas e exemplos dos endpoints de lista
+
 ### v1.0.5 (2026-07-15)
 - 💳 **Pagamentos PIX**: Implementação completa de geração de QR Code PIX estático (EMV 2024)
   - Novo endpoint `POST /api/sessions/{sid}/messages/pix` — Envia PIX via WhatsApp (texto + QR Code)

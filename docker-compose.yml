@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   nb_api:
-    image: naybinho/nb_api:v1.0.5
+    image: naybinho/nb_api:v1.0.6
     container_name: nb_api-server
     restart: unless-stopped
     network_mode: host
