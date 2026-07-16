@@ -684,6 +684,19 @@ O servidor limita o número de chamadas simultâneas por sessão conforme a flag
 ---
 
 ## � Changelog
+### v1.0.5 (2026-07-15)
+- 💳 **Pagamentos PIX**: Implementação completa de geração de QR Code PIX estático (EMV 2024)
+  - Novo endpoint `POST /api/sessions/{sid}/messages/pix` — Envia PIX via WhatsApp (texto + QR Code)
+  - Novo endpoint `POST /api/pix/generate` — Gera QR Code PIX para pré-visualização
+  - Novo endpoint `POST /api/pix/validate` — Valida chave PIX com dígitos verificadores (CPF/CNPJ)
+  - Suporte a todos os tipos de chave: CPF, CNPJ, telefone, e-mail e chave aleatória
+  - Geração de QR Code em PNG usando `github.com/skip2/go-qrcode`
+  - Componente React `PixSender` com pré-visualização do QR Code e cópia do código copia e cola
+- 📖 **Swagger**: Documentados todos os endpoints PIX com schemas (`PixResponse`, `PixGenerateResponse`, `PixValidateResponse`)
+- 🔧 **Swagger UI**: Adicionado servidor `http://localhost:8081` para ambiente de desenvolvimento (além do `:8080` para Docker)
+- 🐳 **Imagem Docker**: Otimizado o processo de build (binário Go pré-compilado para evitar timeout de CGO no Docker Desktop)
+- 🚢 **Docker Hub**: Imagem `v1.0.5` publicada com tags `v1.0.5` e `latest`
+
 ### v1.0.4 (2026-07-13)
 - 🐳 **Docker**: Substituído `EXTERNAL_IP` por `network_mode: host` para resolução definitiva do WebRTC em Linux
 - ⚡ **Scripts de inicialização**: Unificado `start.bat` (compila frontend + servidor Go na porta 8080); novo `start-dev.bat` para desenvolvimento com dois terminais (backend :8081 + frontend :5173 com HMR)

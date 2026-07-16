@@ -6,7 +6,8 @@
     "version": "1.0.5"
   },
   "servers": [
-    { "url": "http://localhost:8080", "description": "Desenvolvimento" }
+    { "url": "http://localhost:8081", "description": "Desenvolvimento (dev)" },
+    { "url": "http://localhost:8080", "description": "Produção (Docker)" }
   ],
   "security": [
     { "basicAuth": [] }
