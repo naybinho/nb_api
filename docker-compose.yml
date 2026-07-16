@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   nb_api:
-    image: naybinho/nb_api:v1.0.7
+    image: naybinho/nb_api:v1.0.8
     container_name: nb_api-server
     restart: unless-stopped
     network_mode: host
@@ -27,3 +27,4 @@ services:
       # S3_BUCKET: nb_api-recordings
       # S3_REGION: us-east-1
       # S3_SSL: "true"
+      EXTERNAL_IP: "" # IP da máquina host para Docker Desktop (descomente se não usar network_mode: host)
