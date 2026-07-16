@@ -608,6 +608,7 @@
                   "title": "Menu de Atendimento",
                   "description": "Escolha uma opção:",
                   "footerText": "Toque em um botão para responder",
+                  "asText": false,
                   "sections": [
                     {
                       "title": "Opções",
@@ -648,6 +649,7 @@
                   "description": { "type": "string", "description": "Texto principal da mensagem" },
                   "buttonText": { "type": "string", "description": "Texto do botão que abre a lista (ex: \"Ver Opções\")" },
                   "footerText": { "type": "string", "description": "Texto do rodapé (opcional)" },
+                  "asText": { "type": "boolean", "description": "Se true, envia como texto plano formatado (fallback para WhatsApp Web que não renderiza botões)" },
                   "sections": {
                     "type": "array",
                     "description": "Seções com linhas de opções",
@@ -679,6 +681,7 @@
                   "description": "Selecione o departamento desejado:",
                   "buttonText": "Ver Opções",
                   "footerText": "Escolha uma opção para continuar",
+                  "asText": false,
                   "sections": [
                     {
                       "title": "Departamentos",

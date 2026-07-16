@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -703,6 +704,7 @@ func (s *server) handleSendList(w http.ResponseWriter, r *http.Request) {
 		Description string `json:"description"`
 		ButtonText  string `json:"buttonText"`
 		FooterText  string `json:"footerText"`
+		AsText      bool   `json:"asText"`
 		Sections    []struct {
 			Title string `json:"title"`
 			Rows  []struct {
@@ -724,6 +726,43 @@ func (s *server) handleSendList(w http.ResponseWriter, r *http.Request) {
 	toJID, err := s.resolvePhoneJID(r.Context(), sess, req.To)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JID"})
+		return
+	}
+
+	if req.AsText {
+		// Send as formatted text message (fallback for WhatsApp Web)
+		var txt strings.Builder
+		if req.Title != "" {
+			txt.WriteString("📋 *" + req.Title + "*\n\n")
+		}
+		if req.Description != "" {
+			txt.WriteString(req.Description + "\n\n")
+		}
+		for i, sec := range req.Sections {
+			if sec.Title != "" {
+				txt.WriteString("*" + sec.Title + "*\n")
+			}
+			for j, row := range sec.Rows {
+				idx := i*len(sec.Rows) + j + 1
+				line := fmt.Sprintf("%d. %s", idx, row.Title)
+				if row.Description != "" {
+					line += " — " + row.Description
+				}
+				txt.WriteString(line + "\n")
+			}
+			txt.WriteString("\n")
+		}
+		if req.FooterText != "" {
+			txt.WriteString("_" + req.FooterText + "_")
+		}
+
+		msg := &waE2E.Message{Conversation: proto.String(txt.String())}
+		resp, err := sess.client.SendMessage(r.Context(), toJID, msg)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"messageId": resp.ID, "timestamp": resp.Timestamp})
 		return
 	}
 
@@ -830,6 +869,7 @@ func (s *server) handleSendListInteractive(w http.ResponseWriter, r *http.Reques
 		Description string `json:"description"`
 		ButtonText  string `json:"buttonText"`
 		FooterText  string `json:"footerText"`
+		AsText      bool   `json:"asText"`
 		Sections    []struct {
 			Title string `json:"title"`
 			Rows  []struct {
@@ -855,6 +895,42 @@ func (s *server) handleSendListInteractive(w http.ResponseWriter, r *http.Reques
 	toJID, err := s.resolvePhoneJID(r.Context(), sess, req.To)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JID"})
+		return
+	}
+
+	if req.AsText {
+		var txt strings.Builder
+		if req.Title != "" {
+			txt.WriteString("📋 *" + req.Title + "*\n\n")
+		}
+		if req.Description != "" {
+			txt.WriteString(req.Description + "\n\n")
+		}
+		for i, sec := range req.Sections {
+			if sec.Title != "" {
+				txt.WriteString("*" + sec.Title + "*\n")
+			}
+			for j, row := range sec.Rows {
+				idx := i*len(sec.Rows) + j + 1
+				line := fmt.Sprintf("%d. %s", idx, row.Title)
+				if row.Description != "" {
+					line += " — " + row.Description
+				}
+				txt.WriteString(line + "\n")
+			}
+			txt.WriteString("\n")
+		}
+		if req.FooterText != "" {
+			txt.WriteString("_" + req.FooterText + "_")
+		}
+
+		msg := &waE2E.Message{Conversation: proto.String(txt.String())}
+		resp, err := sess.client.SendMessage(r.Context(), toJID, msg)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"messageId": resp.ID, "timestamp": resp.Timestamp})
 		return
 	}
 

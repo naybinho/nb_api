@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  api:
+  nb_api:
     image: naybinho/nb_api:v1.0.5
     container_name: nb_api-server
     restart: unless-stopped
@@ -18,5 +18,4 @@ services:
       REDIS_DB: "0"
       AUTH_USERNAME: admin
       AUTH_PASSWORD: admin123
-      # Descomente e altere para o IP/domínio do servidor para o Swagger funcionar corretamente:
-      # SWAGGER_URL: "http://192.168.1.100:8080"
+      SWAGGER_URL: "http://192.168.1.100:8080"
