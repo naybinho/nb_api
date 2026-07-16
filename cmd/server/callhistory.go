@@ -137,6 +137,45 @@ func (s *callHistoryStore) getByID(ctx context.Context, callID string) (*CallHis
 	return &r, nil
 }
 
+// listExpiredRecordings returns history records with a recording URL
+// that are older than the specified cutoff timestamp.
+func (s *callHistoryStore) listExpiredRecordings(ctx context.Context, cutoff int64) ([]CallHistoryRow, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT call_id, session_id, peer, direction, started_at, ended_at,
+		       COALESCE(end_reason, ''), recorded, COALESCE(recording_url, '')
+		FROM call_history
+		WHERE recording_url <> '' AND started_at < $1
+		ORDER BY started_at ASC
+	`, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []CallHistoryRow
+	for rows.Next() {
+		var r CallHistoryRow
+		var endedAt sql.NullInt64
+		if err := rows.Scan(&r.CallID, &r.SessionID, &r.Peer, &r.Direction,
+			&r.StartedAt, &endedAt, &r.EndReason, &r.Recorded, &r.RecordingURL); err != nil {
+			return nil, err
+		}
+		if endedAt.Valid {
+			r.EndedAt = &endedAt.Int64
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// clearRecordingURL clears the recording URL for a given call.
+func (s *callHistoryStore) clearRecordingURL(ctx context.Context, callID string) error {
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE call_history SET recording_url = '' WHERE call_id = $1
+	`, callID)
+	return err
+}
+
 // cleanupOldEntries removes history older than the specified duration.
 // Useful for periodic cleanup if desired.
 func (s *callHistoryStore) cleanupOldEntries(ctx context.Context, olderThan time.Duration) (int64, error) {

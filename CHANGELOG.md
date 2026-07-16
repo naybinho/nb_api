@@ -21,6 +21,11 @@ e este projeto segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Ícone de Status no Histórico:** Indicador visual de chamadas gravadas com acesso rápido à gravação.
 - **Fallback Inteligente:** Se o S3 não estiver configurado, a gravação é desabilitada automaticamente sem quebrar o fluxo de chamadas.
 
+### 🧹 Limpeza Automática de Gravações
+
+- **`RECORDING_RETENTION_DAYS`:** Nova variável de ambiente para deletar automaticamente gravações antigas do S3 após um período configurável (10, 15, 20, 30, 60 ou 90 dias). O scheduler de limpeza roda a cada 6 horas em background. Quando uma gravação expira, o arquivo é removido do S3 e a URL é limpa do banco de dados (o histórico da chamada permanece).
+- **Cleanup Seguro:** Erros de deleção no S3 não interrompem o scheduler — as gravações com falha serão tentadas novamente na próxima execução.
+
 ### 📦 Dependências
 
 - Adicionado: `github.com/minio/minio-go/v7 v7.2.1` (cliente S3)

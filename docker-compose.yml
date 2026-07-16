@@ -28,4 +28,5 @@ services:
       S3_REGION: us-east-1
       S3_SSL: "true"
       S3_PATH_STYLE: "true"
+      RECORDING_RETENTION_DAYS: "0" # 0=desativado, ou 10,15,20,30,60,90 dias
       EXTERNAL_IP: "" # IP da máquina host para Docker Desktop (descomente se não usar network_mode: host)

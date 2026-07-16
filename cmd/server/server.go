@@ -100,6 +100,9 @@ func newServer(ctx context.Context, dbPath, staticDir string, maxCalls int, swag
 	}
 	broker.HistoryStore = callHistory
 
+	// Start automatic cleanup of old recordings
+	startCleanupScheduler(log, callHistory)
+
 	return &server{
 		broker:            broker,
 		sessions:          mgr,
