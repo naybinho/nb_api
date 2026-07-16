@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { PlusCircle } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { AppShell, type ViewType } from "@/components/layout/AppShell";
+import { AppShell, type ViewType, type ApiSubView } from "@/components/layout/AppShell";
 import { CallsPage } from "@/pages/CallsPage";
 import { InstanciasPage } from "@/pages/InstanciasPage";
+import { CrmPage } from "@/pages/CrmPage";
 import { PixSender } from "@/components/domain/pix/PixSender";
 import { SessionPairing } from "@/components/domain/session/SessionPairing";
 import { SessionHeader } from "@/components/domain/session/SessionHeader";
@@ -18,7 +19,8 @@ export const App = () => {
   const sessions = useSessions((s) => s.sessions);
   const activeId = useSessions((s) => s.activeId);
   const theme = useTheme((s) => s.theme);
-  const [view, setView] = useState<ViewType>("calls");
+  const [view, setView] = useState<ViewType>("api");
+  const [subView, setSubView] = useState<ApiSubView>("calls");
 
   useEffect(() => {
     ensureSessionsWired();
@@ -29,8 +31,10 @@ export const App = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <AppShell view={view} onViewChange={setView}>
-        {view === "instancias" ? (
+      <AppShell view={view} onViewChange={setView} subView={subView} onSubViewChange={setSubView}>
+        {view === "crm" ? (
+          <CrmPage />
+        ) : view === "api" && subView === "instancias" ? (
           <InstanciasPage />
         ) : sessions.length === 0 ? (
           <EmptyState
@@ -41,7 +45,7 @@ export const App = () => {
         ) : active ? (
           <div className="space-y-6">
             <SessionHeader session={active} />
-            {view === "pix" ? (
+            {subView === "pix" ? (
               <PixSender sid={active.id} />
             ) : active.paired ? (
               <CallsPage sid={active.id} />

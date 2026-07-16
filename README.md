@@ -1,12 +1,12 @@
 <div align="center">
 
-# 📞 NB_Api
+# 📞 NB_CRM
 
-**API WhatsApp com suporte a mensagens interativas, chamadas de voz e muito mais.**
+**CRM + API WhatsApp com suporte a mensagens interativas, chamadas de voz e muito mais.**
 
 Este projeto oferece uma solução robusta de API conectada diretamente ao WhatsApp, permitindo envio de mensagens, gerenciamento de grupos, visualização de histórico e realização de chamadas de voz (VoIP) diretamente do navegador.
 
-[![Version](https://img.shields.io/badge/Version-1.0.8-blue)](https://github.com/naybinho/nb_api/releases/tag/v1.0.8)
+[![Version](https://img.shields.io/badge/Version-2.0.0-blue)](https://github.com/naybinho/nb_api/releases/tag/v2.0.0)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791?logo=postgresql&logoColor=white)](https://postgresql.org)
@@ -696,6 +696,15 @@ O servidor limita o número de chamadas simultâneas por sessão conforme a flag
 ---
 
 ## � Changelog
+### v2.0.0 (2026-07-16)
+- 🏗️ **Reestruturação completa**: Sistema renomeado para **NB_CRM** com novo menu de navegação **API** (Instâncias, Chamadas, PIX, API Docs) e **CRM** (placeholder para futuras funcionalidades)
+- 🎙️ **Gravação de Chamadas**: Ative a gravação com um clique — o áudio é capturado em PCM, mixado (microfone + peer), convertido para WAV e enviado para armazenamento **S3-compatible** (MinIO, AWS S3, etc.)
+- 🗄️ **Histórico Persistente**: Histórico de chamadas agora é salvo permanentemente no PostgreSQL — nunca é perdido mesmo reiniciando o servidor
+- ▶️ **Player de Gravação**: Painel de histórico exibe status da gravação e botão de play para ouvir diretamente no navegador
+- 🧹 **Limpeza Automática**: Gravações antigas podem ser deletadas automaticamente via `RECORDING_RETENTION_DAYS` (10, 15, 20, 30, 60 ou 90 dias)
+- ☁️ **S3 Configurável**: Suporte a qualquer serviço compatível com S3 via variáveis de ambiente (`S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION`, `S3_SSL`, `S3_PATH_STYLE`)
+- 🔌 **Nova dependência**: Adicionado `github.com/minio/minio-go/v7 v7.2.1` (cliente S3)
+
 ### v1.0.8 (2026-07-16)
 - 🎙️ **Gravação de Chamadas**: Ative a gravação com um clique — o áudio é capturado em PCM, mixado (microfone + peer), convertido para WAV e enviado para armazenamento **S3-compatible** (MinIO, AWS S3, etc.)
 - 🗄️ **Histórico Persistente**: Histórico de chamadas agora é salvo permanentemente no PostgreSQL — nunca é perdido mesmo reiniciando o servidor

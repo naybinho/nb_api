@@ -7,30 +7,36 @@ e este projeto segue [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
-## [v1.0.8] - 2026-07-16
+## [v2.0.0] - 2026-07-16
 
-### ✨ Novas Funcionalidades
+### 🏗️ Reestruturação do Sistema
+
+- **Novo Nome:** Sistema renomeado de **NB_Api** para **NB_CRM**.
+- **Nova Versão:** v2.0.0 — marco de evolução do projeto.
+- **Menu API:** Todo o conteúdo existente (Instâncias, Chamadas, PIX, API Docs) agora está organizado sob o menu **API** no topo da página.
+- **Menu CRM:** Novo menu **CRM** criado com página placeholder preparada para futuras funcionalidades de gestão de clientes, atendimentos e setores.
+
+### ✨ Novas Funcionalidades (acumulado v1.0.8)
 
 - **Gravação de Chamadas:** Agora é possível gravar chamadas de voz do WhatsApp com um clique. O áudio do microfone e do peer é capturado em PCM, mixado e convertido para WAV, sendo enviado automaticamente para armazenamento **S3-compatible** (MinIO, AWS S3, etc.) ao final da chamada.
 - **Histórico Persistente em PostgreSQL:** O histórico de chamadas agora é salvo permanentemente no banco de dados PostgreSQL, nunca sendo perdido mesmo após reiniciar o servidor.
 - **Player de Gravação no Frontend:** O painel de histórico exibe o status da gravação (gravada/não gravada) e um botão de play para ouvir a gravação diretamente no navegador.
+- **Limpeza Automática de Gravações:** Nova variável `RECORDING_RETENTION_DAYS` para deletar automaticamente gravações antigas do S3 (10, 15, 20, 30, 60 ou 90 dias). O scheduler roda a cada 6 horas.
 
 ### 🔧 Melhorias
 
-- **Armazenamento S3 Configurável:** Suporte a qualquer serviço compatível com S3 via variáveis de ambiente (`S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION`, `S3_SSL`).
+- **Armazenamento S3 Configurável:** Suporte a qualquer serviço compatível com S3 via variáveis de ambiente (`S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET`, `S3_REGION`, `S3_SSL`, `S3_PATH_STYLE`).
 - **Ícone de Status no Histórico:** Indicador visual de chamadas gravadas com acesso rápido à gravação.
 - **Fallback Inteligente:** Se o S3 não estiver configurado, a gravação é desabilitada automaticamente sem quebrar o fluxo de chamadas.
-
-### 🧹 Limpeza Automática de Gravações
-
-- **`RECORDING_RETENTION_DAYS`:** Nova variável de ambiente para deletar automaticamente gravações antigas do S3 após um período configurável (10, 15, 20, 30, 60 ou 90 dias). O scheduler de limpeza roda a cada 6 horas em background. Quando uma gravação expira, o arquivo é removido do S3 e a URL é limpa do banco de dados (o histórico da chamada permanece).
-- **Cleanup Seguro:** Erros de deleção no S3 não interrompem o scheduler — as gravações com falha serão tentadas novamente na próxima execução.
+- **Correção:** `Recorded` e `RecordingURL` agora são preservados durante mudanças de estado da chamada, garantindo que o status de gravação apareça corretamente no histórico.
 
 ### 📦 Dependências
 
 - Adicionado: `github.com/minio/minio-go/v7 v7.2.1` (cliente S3)
 
 ---
+
+## [v1.0.8] - 2026-07-16
 
 ## [v1.0.7] - 2026-06-15
 
