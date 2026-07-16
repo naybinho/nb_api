@@ -6,7 +6,7 @@
 
 Este projeto oferece uma solução robusta de API conectada diretamente ao WhatsApp, permitindo envio de mensagens, gerenciamento de grupos, visualização de histórico e realização de chamadas de voz (VoIP) diretamente do navegador.
 
-[![Version](https://img.shields.io/badge/Version-1.0.4-blue)](https://github.com/naybinho/nb_api)
+[![Version](https://img.shields.io/badge/Version-1.0.5-blue)](https://github.com/naybinho/nb_api)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-336791?logo=postgresql&logoColor=white)](https://postgresql.org)
@@ -22,6 +22,7 @@ Este projeto oferece uma solução robusta de API conectada diretamente ao Whats
 - **Multi-Sessões:** Conecte múltiplas contas de WhatsApp lendo o QR Code diretamente pela interface. As sessões são restauradas automaticamente ao reiniciar o servidor.
 - **Chamadas de Voz Nativas:** Faça e receba chamadas de voz diretamente pelo navegador. O áudio do microfone trafega via WebRTC para o servidor Go, que encoda nativamente (MLow) e repassa para a rede do WhatsApp (SRTP).
 - **Gestão Completa de Sessões:** Criação, logout, re-pareamento (QR Code), atualização de nome e chave de API (API Key) por sessão.
+- **Pagamentos PIX:** Geração de QR Code PIX estático (EMV), envio do código copia e cola e/ou imagem do QR Code via WhatsApp, suporte a todos os tipos de chave (CPF, CNPJ, telefone, e-mail, aleatória), validação de chaves (CPF/CNPJ com dígitos verificadores) e valor opcional.
 - **Mensagens Avançadas:** Envio de texto, mídia (fotos, áudios, vídeos, documentos, stickers), localização, contatos, listas interativas (quick_reply), listas dropdown, enquetes, reações, edição e revogação de mensagens, marcação de leitura e download de mídia.
 - **Grupos:** Criação, atualização, gestão de participantes (adicionar/remover/promover/rebaixar), links de convite (criar/revogar), pedidos de entrada (listar/aprovar) e foto do grupo.
 - **Contatos e Perfil:** Leitura da agenda, informações de contato, avatar, subscrição de presença, alteração de nome, status, foto de perfil e configurações de privacidade (ler/escrever).
@@ -219,6 +220,9 @@ Todas as rotas baseadas em ação (exceto `GET /api/events` e `/swagger`) ocorre
 | | `DELETE` | `/api/sessions/{sid}/newsletters/{jid}` | Deixa de seguir newsletter |
 | | `POST` | `/api/sessions/{sid}/newsletters/{jid}/mute` | Alterna mute da newsletter |
 | **Eventos** | `GET` | `/api/events` | Stream SSE em tempo real |
+| **PIX** | `POST` | `/api/sessions/{sid}/messages/pix` | Envia PIX via WhatsApp (QR Code + texto) |
+| | `POST` | `/api/pix/generate` | Gera QR Code PIX (pré-visualização, sem enviar) |
+| | `POST` | `/api/pix/validate` | Valida chave PIX (CPF/CNPJ com dígitos verificadores) |
 
 ### SID (Session ID)
 

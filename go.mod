@@ -42,6 +42,7 @@ require (
 	github.com/pion/transport/v4 v4.0.2 // indirect
 	github.com/pion/turn/v5 v5.0.9 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/vektah/gqlparser/v2 v2.5.27 // indirect
 	github.com/wlynxg/anet v0.0.5 // indirect
 	go.mau.fi/libsignal v0.2.2 // indirect

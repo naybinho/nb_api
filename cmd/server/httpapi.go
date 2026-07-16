@@ -31,6 +31,7 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("POST /api/sessions/{sid}/messages", s.handleSendMessage) // Accepts form-data or JSON (for text, media, etc)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/text", s.handleSendText)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/media", s.handleSendMedia) // image, video, audio, document, sticker
+	mux.HandleFunc("POST /api/sessions/{sid}/messages/pix", s.handleSendPix)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/location", s.handleSendLocation)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/contact", s.handleSendContact)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/list", s.handleSendList)
@@ -41,6 +42,10 @@ func (s *server) routes() http.Handler {
 	mux.HandleFunc("DELETE /api/sessions/{sid}/messages/{id}", s.handleRevokeMessage)
 	mux.HandleFunc("POST /api/sessions/{sid}/messages/{id}/read", s.handleMarkRead)
 	mux.HandleFunc("GET /api/sessions/{sid}/media/{id}", s.handleDownloadMedia)
+
+	// PIX
+	mux.HandleFunc("POST /api/pix/generate", s.handleGeneratePix)
+	mux.HandleFunc("POST /api/pix/validate", s.handleValidatePixKey)
 
 	// Groups
 	mux.HandleFunc("GET /api/sessions/{sid}/groups", s.handleGetGroups)

@@ -3,7 +3,7 @@
   "info": {
     "title": "NB_Api",
     "description": "API do CRM Atendimento — Gerenciamento de chamadas e mensagens WhatsApp",
-    "version": "1.0.1"
+    "version": "1.0.5"
   },
   "servers": [
     { "url": "http://localhost:8080", "description": "Desenvolvimento" }
@@ -73,6 +73,29 @@
               "callId": { "type": "string" }
             }
           }
+        }
+      },
+      "PixResponse": {
+        "type": "object",
+        "properties": {
+          "messageId": { "type": "string", "description": "ID da mensagem enviada" },
+          "timestamp": { "type": "integer", "description": "Timestamp do envio" },
+          "brcode": { "type": "string", "description": "Código Pix Copia e Cola (EMV)" }
+        }
+      },
+      "PixGenerateResponse": {
+        "type": "object",
+        "properties": {
+          "brcode": { "type": "string", "description": "Código Pix Copia e Cola (EMV)" },
+          "qrCode": { "type": "string", "description": "QR Code em base64 (data:image/png;base64,...)" },
+          "generatedAt": { "type": "integer", "description": "Timestamp da geração" }
+        }
+      },
+      "PixValidateResponse": {
+        "type": "object",
+        "properties": {
+          "valid": { "type": "boolean", "description": "Se a chave é válida" },
+          "message": { "type": "string", "description": "Mensagem de erro, se inválida" }
         }
       }
     }
@@ -1482,6 +1505,117 @@
         },
         "responses": {
           "204": { "description": "Configurado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/pix": {
+      "post": {
+        "summary": "Enviar PIX via WhatsApp",
+        "tags": ["PIX"],
+        "description": "Gera um QR Code PIX (EMV estático) e envia para o destinatário no WhatsApp. Pode enviar como imagem (QR Code) ou como texto formatado com o código copia e cola.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "description": "Telefone ou JID do destinatário" },
+                  "pixKey": { "type": "string", "description": "Chave PIX (CPF, CNPJ, telefone, e-mail ou chave aleatória)" },
+                  "keyType": { "type": "string", "enum": ["cpf", "cnpj", "phone", "email", "random"], "description": "Tipo da chave PIX" },
+                  "merchantName": { "type": "string", "description": "Nome do recebedor (até 25 caracteres)" },
+                  "merchantCity": { "type": "string", "description": "Cidade do recebedor (até 15 caracteres)" },
+                  "amount": { "type": "number", "format": "float", "description": "Valor da transação (opcional)" },
+                  "description": { "type": "string", "description": "Descrição do pagamento (opcional)" },
+                  "sendQRCode": { "type": "boolean", "description": "Enviar QR Code como imagem (true) ou apenas texto (false)", "default": true }
+                },
+                "required": ["to", "pixKey", "merchantName"],
+                "example": {
+                  "to": "5531992604940",
+                  "pixKey": "123.456.789-00",
+                  "keyType": "cpf",
+                  "merchantName": "João Silva",
+                  "merchantCity": "Belo Horizonte",
+                  "amount": 150.00,
+                  "description": "Pagamento do serviço de consultoria",
+                  "sendQRCode": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "PIX enviado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PixResponse" } } } },
+          "400": { "description": "Parâmetros inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Não conectado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/pix/generate": {
+      "post": {
+        "summary": "Gerar QR Code PIX (sem enviar)",
+        "tags": ["PIX"],
+        "description": "Gera um QR Code PIX estático e retorna o código copia e cola (EMV) e a imagem do QR Code em base64. Útil para pré-visualização.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pixKey": { "type": "string", "description": "Chave PIX" },
+                  "keyType": { "type": "string", "enum": ["cpf", "cnpj", "phone", "email", "random"], "description": "Tipo da chave PIX" },
+                  "merchantName": { "type": "string", "description": "Nome do recebedor" },
+                  "merchantCity": { "type": "string", "description": "Cidade do recebedor" },
+                  "amount": { "type": "number", "format": "float", "description": "Valor (opcional)" },
+                  "description": { "type": "string", "description": "Descrição (opcional)" }
+                },
+                "required": ["pixKey"],
+                "example": {
+                  "pixKey": "123.456.789-00",
+                  "keyType": "cpf",
+                  "merchantName": "João Silva",
+                  "merchantCity": "Belo Horizonte",
+                  "amount": 150.00,
+                  "description": "Pagamento de consultoria"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "QR Code gerado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PixGenerateResponse" } } } },
+          "400": { "description": "Parâmetros inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/pix/validate": {
+      "post": {
+        "summary": "Validar chave PIX",
+        "tags": ["PIX"],
+        "description": "Valida uma chave PIX de acordo com seu tipo. Para CPF e CNPJ, valida os dígitos verificadores.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pixKey": { "type": "string", "description": "Chave PIX para validar" },
+                  "keyType": { "type": "string", "enum": ["cpf", "cnpj", "phone", "email", "random"], "description": "Tipo da chave" }
+                },
+                "required": ["pixKey", "keyType"],
+                "example": {
+                  "pixKey": "123.456.789-00",
+                  "keyType": "cpf"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Resultado da validação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PixValidateResponse" } } } },
+          "400": { "description": "Parâmetros inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
         }
       }
     },
