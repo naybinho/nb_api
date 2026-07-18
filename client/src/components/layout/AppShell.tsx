@@ -11,8 +11,8 @@ export type ApiSubView = "instancias" | "calls" | "pix";
 
 export const AppShell = ({
   children,
-  view,
-  onViewChange,
+  view: _view,
+  onViewChange: _onViewChange,
   subView,
   onSubViewChange,
 }: {
