@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  nb_api:
+    image: naybinho/nb_api:v2.0.0
+    container_name: nb_api-server
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DB_HOST: 192.168.0.100
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: suporte-senha-aqui
+      DB_NAME: nb_api
+      DB_SSLMODE: disable
+      REDIS_HOST: 192.168.0.100:6379
+      REDIS_PASSWORD: suporte-senha-aqui
+      REDIS_DB: "0"
+      AUTH_USERNAME: admin
+      AUTH_PASSWORD: suporte-senha-aqui
+      SWAGGER_URL: "http://192.168.0.100:8080"
+
+      # S3-compatible Storage (para gravação de chamadas)
+      S3_ENDPOINT: s3.exemplo.com.br
+      S3_ACCESS_KEY: suporte-access-key-aqui
+      S3_SECRET_KEY: suporte-secret-key-aqui
+      S3_BUCKET: nome-do-bucket
+      S3_REGION: us-east-1
+      S3_SSL: "true"
+      S3_PATH_STYLE: "true"
+      RECORDING_RETENTION_DAYS: "0" # 0=desativado, ou 10,15,20,30,60,90 dias
+      EXTERNAL_IP: "" # IP da máquina host para Docker Desktop (descomente se não usar network_mode: host)

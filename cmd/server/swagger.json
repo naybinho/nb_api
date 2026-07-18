@@ -1,0 +1,1813 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "NB_Api",
+    "description": "API do CRM Atendimento — Gerenciamento de chamadas e mensagens WhatsApp",
+    "version": "1.0.5"
+  },
+  "servers": [
+    { "url": "http://localhost:8081", "description": "Desenvolvimento (dev)" },
+    { "url": "http://localhost:8080", "description": "Produção (Docker)" }
+  ],
+  "security": [
+    { "basicAuth": [] }
+  ],
+  "tags": [
+    { "name": "Sessões", "description": "Gerenciamento de sessões WhatsApp" },
+    { "name": "Chamadas", "description": "Chamadas de voz VoIP" },
+    { "name": "Mensagens", "description": "Envio de mensagens" },
+    { "name": "PIX", "description": "Pagamentos PIX via WhatsApp" },
+    { "name": "Grupos", "description": "Gerenciamento de grupos" },
+    { "name": "Usuários/Contatos", "description": "Informações de contatos" },
+    { "name": "Perfil", "description": "Configurações de perfil" },
+    { "name": "Blocklist", "description": "Lista de bloqueados" },
+    { "name": "Newsletters", "description": "Gerenciamento de canais" },
+    { "name": "Webhooks", "description": "Integração com sistemas externos via webhook" },
+    { "name": "Eventos", "description": "Stream de eventos em tempo real" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "basicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "Credenciais definidas nas variáveis AUTH_USERNAME / AUTH_PASSWORD do .env"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string", "description": "Mensagem de erro" }
+        }
+      },
+      "SessionInfo": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "jid": { "type": "string", "nullable": true },
+          "state": { "type": "string", "enum": ["connecting", "qr", "open", "logged_out"] },
+          "paired": { "type": "boolean" },
+          "apiKey": { "type": "string" }
+        }
+      },
+      "CallRecord": {
+        "type": "object",
+        "properties": {
+          "sessionId": { "type": "string" },
+          "callId": { "type": "string" },
+          "owner": { "type": "string", "nullable": true },
+          "direction": { "type": "string", "enum": ["outbound", "inbound"] },
+          "peer": { "type": "string" },
+          "startedAt": { "type": "integer" },
+          "status": { "type": "string", "enum": ["starting", "ringing", "connected", "ended"] },
+          "endedAt": { "type": "integer", "nullable": true },
+          "endReason": { "type": "string" }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "messageId": { "type": "string" },
+          "timestamp": { "type": "integer" }
+        }
+      },
+      "MessageIdResponse": {
+        "type": "object",
+        "properties": {
+          "messageId": { "type": "string" }
+        }
+      },
+      "CallIdResponse": {
+        "type": "object",
+        "properties": {
+          "call": {
+            "type": "object",
+            "properties": {
+              "callId": { "type": "string" }
+            }
+          }
+        }
+      },
+      "PixResponse": {
+        "type": "object",
+        "properties": {
+          "messageId": { "type": "string", "description": "ID da mensagem enviada" },
+          "timestamp": { "type": "integer", "description": "Timestamp do envio" },
+          "brcode": { "type": "string", "description": "Código Pix Copia e Cola (EMV)" }
+        }
+      },
+      "PixGenerateResponse": {
+        "type": "object",
+        "properties": {
+          "brcode": { "type": "string", "description": "Código Pix Copia e Cola (EMV)" },
+          "qrCode": { "type": "string", "description": "QR Code em base64 (data:image/png;base64,...)" },
+          "generatedAt": { "type": "integer", "description": "Timestamp da geração" }
+        }
+      },
+      "PixValidateResponse": {
+        "type": "object",
+        "properties": {
+          "valid": { "type": "boolean", "description": "Se a chave é válida" },
+          "message": { "type": "string", "description": "Mensagem de erro, se inválida" }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "description": "ID único do webhook" },
+          "sessionId": { "type": "string", "description": "ID da sessão" },
+          "url": { "type": "string", "description": "URL que recebe os eventos" },
+          "events": { "type": "string", "description": "Eventos separados por vírgula ('*' para todos)" },
+          "enabled": { "type": "boolean", "description": "Se o webhook está ativo" },
+          "secret": { "type": "string", "description": "Segredo para assinatura HMAC" },
+          "createdAt": { "type": "string", "format": "date-time", "description": "Data de criação" },
+          "updatedAt": { "type": "string", "format": "date-time", "description": "Data da última atualização" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/sessions": {
+      "get": {
+        "summary": "Listar sessões",
+        "tags": ["Sessões"],
+        "responses": {
+          "200": {
+            "description": "Lista de sessões",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sessions": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/SessionInfo" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Criar sessão",
+        "tags": ["Sessões"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "description": "Nome da instância. O sid será gerado a partir deste nome (slug). Ex: 'Minha Sessao' → sid 'Minha-Sessao'" },
+                  "apiKey": { "type": "string", "description": "Chave de API (auto-gerada se vazia)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Sessão criada. O campo 'id' é derivado do nome informado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "description": "Session ID (slug do nome)" },
+                    "apiKey": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}": {
+      "delete": {
+        "summary": "Excluir sessão",
+        "tags": ["Sessões"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Sessão excluída" },
+          "404": { "description": "Sessão não encontrada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/sessions/{sid}/logout": {
+      "post": {
+        "summary": "Desconectar sessão do WhatsApp",
+        "tags": ["Sessões"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Desconectado" },
+          "404": { "description": "Sessão não encontrada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/sessions/{sid}/pair": {
+      "post": {
+        "summary": "Iniciar pareamento (gera QR code)",
+        "tags": ["Sessões"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "QR code gerado — evento session-qr no SSE" },
+          "400": { "description": "Sessão já pareada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/sessions/{sid}/apikey": {
+      "put": {
+        "summary": "Atualizar chave de API da sessão",
+        "tags": ["Sessões"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "apiKey": { "type": "string", "description": "Nova chave (auto-gerada se vazia)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chave atualizada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "apiKey": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/name": {
+      "put": {
+        "summary": "Alterar nome da sessão",
+        "tags": ["Sessões"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "description": "Novo nome" }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Nome atualizado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/calls": {
+      "post": {
+        "summary": "Iniciar chamada telefônica",
+        "tags": ["Chamadas"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phone": { "type": "string", "description": "Número de telefone" },
+                  "duration_ms": { "type": "integer", "description": "Duração máxima em ms (opcional)" },
+                  "record": { "type": "boolean", "description": "Gravar chamada" }
+                },
+                "required": ["phone"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Chamada iniciada",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CallIdResponse" } } }
+          },
+          "400": { "description": "Phone inválido" },
+          "409": { "description": "Operador já em chamada" },
+          "429": { "description": "Máximo de chamadas concorrentes" },
+          "503": { "description": "Não pareado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/calls/{id}/webrtc": {
+      "post": {
+        "summary": "Enviar oferta WebRTC",
+        "tags": ["Chamadas"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID da chamada" }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sdp_offer": { "type": "string", "description": "SDP offer do navegador" }
+                },
+                "required": ["sdp_offer"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SDP answer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sdp_answer": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Chamada não encontrada" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/calls/{id}/accept": {
+      "post": {
+        "summary": "Aceitar chamada recebida",
+        "tags": ["Chamadas"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID da chamada" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chamada aceita",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CallIdResponse" } } }
+          },
+          "404": { "description": "Chamada não encontrada" },
+          "409": { "description": "Conflito" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/calls/{id}/reject": {
+      "post": {
+        "summary": "Rejeitar chamada recebida",
+        "tags": ["Chamadas"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID da chamada" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Chamada rejeitada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "example": "ok" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/calls/{id}": {
+      "delete": {
+        "summary": "Encerrar chamada",
+        "tags": ["Chamadas"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID da chamada" }
+        ],
+        "responses": {
+          "204": { "description": "Chamada encerrada" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/history": {
+      "get": {
+        "summary": "Histórico de chamadas",
+        "tags": ["Chamadas"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Histórico (últimas 50 chamadas)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/CallRecord" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages": {
+      "post": {
+        "summary": "Enviar mensagem (genérico — dispatcher por type)",
+        "tags": ["Mensagens"],
+        "description": "O campo `type` define o tipo de mensagem. Os campos adicionais variam conforme o tipo (ver endpoints específicos).",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string", "enum": ["text", "image", "video", "audio", "document", "sticker", "location", "contact", "list"] }
+                },
+                "required": ["type"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Mensagem enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/text": {
+      "post": {
+        "summary": "Enviar mensagem de texto",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "description": "Telefone ou JID do destinatário" },
+                  "text": { "type": "string", "description": "Texto da mensagem" }
+                },
+                "required": ["to", "text"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Mensagem enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/media": {
+      "post": {
+        "summary": "Enviar mídia (imagem, vídeo, áudio, documento, sticker)",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "description": "Telefone ou JID" },
+                  "type": { "type": "string", "enum": ["image", "video", "audio", "document", "sticker"] },
+                  "data": { "type": "string", "format": "byte", "description": "Base64 do arquivo" },
+                  "url": { "type": "string", "description": "URL pública (alternativa)" },
+                  "caption": { "type": "string" },
+                  "filename": { "type": "string", "description": "Nome do arquivo (document)" },
+                  "mimetype": { "type": "string" }
+                },
+                "required": ["to", "type", "data"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Mídia enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/location": {
+      "post": {
+        "summary": "Enviar localização",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string" },
+                  "lat": { "type": "number", "format": "float" },
+                  "lng": { "type": "number", "format": "float" },
+                  "name": { "type": "string" },
+                  "address": { "type": "string" },
+                  "url": { "type": "string" }
+                },
+                "required": ["to"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Localização enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/contact": {
+      "post": {
+        "summary": "Enviar contato (vCard)",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string" },
+                  "displayName": { "type": "string" },
+                  "vcard": { "type": "string", "description": "Dados do vCard" }
+                },
+                "required": ["to", "vcard"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Contato enviado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/list": {
+      "post": {
+        "summary": "Enviar botões interativos (quick_reply)",
+        "tags": ["Mensagens"],
+        "description": "Envia uma mensagem com botões interativos (substitui o ListMessage, que foi depreciado pelo WhatsApp). Cada row vira um botão quick_reply.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "description": "Telefone ou JID do destinatário" },
+                  "title": { "type": "string", "description": "Título (opcional, aparece como cabeçalho)" },
+                  "description": { "type": "string", "description": "Texto principal da mensagem" },
+                  "footerText": { "type": "string", "description": "Texto do rodapé (opcional)" },
+                  "sections": {
+                    "type": "array",
+                    "description": "Seções com opções",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": { "type": "string", "description": "Título da seção (ignorado no quick_reply)" },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": { "type": "string", "description": "Texto do botão" },
+                              "description": { "type": "string", "description": "Ignorado (era usado no ListMessage)" },
+                              "rowId": { "type": "string", "description": "ID enviado como resposta ao clicar no botão" }
+                            },
+                            "required": ["title"]
+                          }
+                        }
+                      },
+                      "required": ["rows"]
+                    }
+                  }
+                },
+                "required": ["to", "sections"],
+                "example": {
+                  "to": "5531992604940",
+                  "title": "Menu de Atendimento",
+                  "description": "Escolha uma opção:",
+                  "footerText": "Toque em um botão para responder",
+                  "asText": false,
+                  "sections": [
+                    {
+                      "title": "Opções",
+                      "rows": [
+                        { "title": "Falar com Vendas", "rowId": "vendas" },
+                        { "title": "Falar com Suporte", "rowId": "suporte" },
+                        { "title": "Falar com Financeiro", "rowId": "financeiro" }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Mensagem enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/list-interactive": {
+      "post": {
+        "summary": "Enviar lista interativa (dropdown com seções)",
+        "tags": ["Mensagens"],
+        "description": "Envia uma lista interativa (dropdown) com seções e linhas. O destinatário toca no botão e seleciona uma opção da lista. Use este formato para menus com muitas opções organizadas por seções.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "description": "Telefone ou JID do destinatário" },
+                  "title": { "type": "string", "description": "Título (opcional, aparece como cabeçalho)" },
+                  "description": { "type": "string", "description": "Texto principal da mensagem" },
+                  "buttonText": { "type": "string", "description": "Texto do botão que abre a lista (ex: \"Ver Opções\")" },
+                  "footerText": { "type": "string", "description": "Texto do rodapé (opcional)" },
+                  "asText": { "type": "boolean", "description": "Se true, envia como texto plano formatado (fallback para WhatsApp Web que não renderiza botões)" },
+                  "sections": {
+                    "type": "array",
+                    "description": "Seções com linhas de opções",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": { "type": "string", "description": "Título da seção" },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": { "type": "string", "description": "Texto principal da opção" },
+                              "description": { "type": "string", "description": "Descrição secundária (opcional)" },
+                              "rowId": { "type": "string", "description": "ID enviado como resposta ao selecionar" }
+                            },
+                            "required": ["title"]
+                          }
+                        }
+                      },
+                      "required": ["rows"]
+                    }
+                  }
+                },
+                "required": ["to", "sections"],
+                "example": {
+                  "to": "5531992604940",
+                  "title": "Atendimento",
+                  "description": "Selecione o departamento desejado:",
+                  "buttonText": "Ver Opções",
+                  "footerText": "Escolha uma opção para continuar",
+                  "asText": false,
+                  "sections": [
+                    {
+                      "title": "Departamentos",
+                      "rows": [
+                        { "title": "Vendas", "description": "Comprar produtos", "rowId": "vendas" },
+                        { "title": "Suporte", "description": "Ajuda técnica", "rowId": "suporte" },
+                        { "title": "Financeiro", "description": "Faturas e pagamentos", "rowId": "financeiro" }
+                      ]
+                    },
+                    {
+                      "title": "Outros",
+                      "rows": [
+                        { "title": "Reclamação", "description": "Registrar reclamação", "rowId": "reclamacao" },
+                        { "title": "Elogio", "description": "Enviar feedback", "rowId": "elogio" }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Mensagem enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/poll": {
+      "post": {
+        "summary": "Enviar enquete (poll)",
+        "tags": ["Mensagens"],
+        "description": "Envia uma enquete interativa com múltiplas opções. O destinatário pode votar em uma ou mais opções.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "description": "Telefone ou JID do destinatário" },
+                  "name": { "type": "string", "description": "Pergunta da enquete" },
+                  "options": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Opções da enquete (mín. 2)"
+                  },
+                  "selectableCount": {
+                    "type": "integer",
+                    "description": "Quantas opções o usuário pode selecionar (padrão: 1)"
+                  }
+                },
+                "required": ["to", "name", "options"],
+                "example": {
+                  "to": "5531992604940",
+                  "name": "Qual departamento você precisa?",
+                  "options": ["Vendas", "Suporte", "Financeiro"],
+                  "selectableCount": 1
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Enquete enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/react": {
+      "post": {
+        "summary": "Enviar reação (emoji)",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string" },
+                  "messageId": { "type": "string", "description": "ID da mensagem alvo" },
+                  "reaction": { "type": "string", "description": "Emoji (vazio para remover)" }
+                },
+                "required": ["to", "messageId", "reaction"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Reação enviada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageIdResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/edit": {
+      "post": {
+        "summary": "Editar mensagem",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string" },
+                  "messageId": { "type": "string", "description": "ID da mensagem a editar" },
+                  "text": { "type": "string", "description": "Novo texto" }
+                },
+                "required": ["to", "messageId", "text"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Mensagem editada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageIdResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/{id}": {
+      "delete": {
+        "summary": "Revogar/excluir mensagem",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID da mensagem" },
+          { "name": "to", "in": "query", "required": true, "schema": { "type": "string" }, "description": "JID do destinatário" }
+        ],
+        "responses": {
+          "200": { "description": "Mensagem revogada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MessageIdResponse" } } } },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/{id}/read": {
+      "post": {
+        "summary": "Marcar mensagem como lida",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "ID da mensagem" },
+          { "name": "to", "in": "query", "required": true, "schema": { "type": "string" }, "description": "JID do destinatário" }
+        ],
+        "responses": {
+          "204": { "description": "Mensagem marcada como lida" },
+          "503": { "description": "Não conectado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/media/{id}": {
+      "get": {
+        "summary": "Baixar mídia do WhatsApp CDN",
+        "tags": ["Mensagens"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "directPath", "in": "query", "required": true, "schema": { "type": "string" } },
+          { "name": "mediaKey", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Base64" },
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["image", "video", "audio", "document", "sticker"] } },
+          { "name": "encSha256", "in": "query", "schema": { "type": "string" } },
+          { "name": "sha256", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Arquivo binário da mídia" },
+          "400": { "description": "Parâmetros ausentes" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/users": {
+      "get": {
+        "summary": "Obter informações de usuários",
+        "tags": ["Usuários / Contatos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "query", "required": true, "schema": { "type": "array", "items": { "type": "string" } }, "style": "form", "explode": true, "description": "JIDs para consultar (múltiplos)" }
+        ],
+        "responses": {
+          "200": { "description": "Informações dos usuários" },
+          "400": { "description": "Forneça ao menos um jid" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/users/{jid}/presence": {
+      "get": {
+        "summary": "Inscrever-se em atualizações de presença",
+        "tags": ["Usuários / Contatos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Inscrito" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/users/check": {
+      "post": {
+        "summary": "Verificar se números estão no WhatsApp",
+        "tags": ["Usuários / Contatos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "phones": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["phones"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Resultados do IsOnWhatsApp" },
+          "400": { "description": "Body inválido" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/contacts": {
+      "get": {
+        "summary": "Listar todos os contatos",
+        "tags": ["Usuários / Contatos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Mapa de contatos" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/contacts/{jid}": {
+      "get": {
+        "summary": "Obter informações de um contato",
+        "tags": ["Usuários / Contatos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Informações do contato" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/contacts/{jid}/avatar": {
+      "get": {
+        "summary": "Obter avatar do contato",
+        "tags": ["Usuários / Contatos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "preview", "in": "query", "schema": { "type": "string" }, "description": "\"true\" para preview" },
+          { "name": "existingId", "in": "query", "schema": { "type": "string" }, "description": "ID de picture existente" }
+        ],
+        "responses": {
+          "200": { "description": "Informações do avatar" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups": {
+      "get": {
+        "summary": "Listar grupos",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Lista de grupos" }
+        }
+      },
+      "post": {
+        "summary": "Criar grupo",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "participants": { "type": "array", "items": { "type": "string" }, "description": "JIDs dos participantes" }
+                },
+                "required": ["name", "participants"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Grupo criado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/{gid}": {
+      "get": {
+        "summary": "Obter informações do grupo",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Informações do grupo" }
+        }
+      },
+      "put": {
+        "summary": "Atualizar configurações do grupo",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "topic": { "type": "string", "description": "Descrição do grupo" },
+                  "locked": { "type": "boolean", "description": "Restringir alterações a admins" },
+                  "announce": { "type": "boolean", "description": "Restringir envio a admins" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Atualizado" }
+        }
+      },
+      "delete": {
+        "summary": "Sair do grupo",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Saiu do grupo" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/{gid}/invite": {
+      "get": {
+        "summary": "Obter link de convite do grupo",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Link de convite",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "link": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/{gid}/invite/revoke": {
+      "post": {
+        "summary": "Revogar link de convite",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Novo link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "link": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/join": {
+      "post": {
+        "summary": "Entrar em grupo via link de convite",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "link": { "type": "string", "description": "Link de convite" }
+                },
+                "required": ["link"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Entrou no grupo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groupId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/{gid}/participants": {
+      "post": {
+        "summary": "Adicionar ou remover participantes",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": { "type": "string", "enum": ["add", "remove"] },
+                  "participants": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["action", "participants"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Participantes atualizados" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/{gid}/participants/{jid}": {
+      "put": {
+        "summary": "Promover ou rebaixar participante",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": { "type": "string", "enum": ["promote", "demote"] }
+                },
+                "required": ["action"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Participante promovido/rebaixado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/{gid}/requests": {
+      "get": {
+        "summary": "Listar solicitações de entrada",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Lista de solicitações" }
+        }
+      },
+      "post": {
+        "summary": "Aprovar ou rejeitar solicitações",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": { "type": "string", "enum": ["approve", "reject"] },
+                  "participants": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["action", "participants"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Solicitações processadas" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/groups/{gid}/photo": {
+      "put": {
+        "summary": "Definir foto do grupo",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "photo": { "type": "string", "format": "binary" }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": { "type": "string", "format": "byte", "description": "Base64 JPEG" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Foto atualizada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pictureId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remover foto do grupo",
+        "tags": ["Grupos"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "gid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Foto removida" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/profile/name": {
+      "put": {
+        "summary": "Alterar nome do perfil",
+        "tags": ["Perfil"],
+        "description": "**Não implementado** — whatsmeow não fornece API pública para alterar nome do perfil.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "501": { "description": "Não implementado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/profile/status": {
+      "put": {
+        "summary": "Alterar status (recado) do perfil",
+        "tags": ["Perfil"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "description": "Novo status" }
+                },
+                "required": ["status"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Status atualizado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/profile/photo": {
+      "put": {
+        "summary": "Alterar foto do perfil",
+        "tags": ["Perfil"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "photo": { "type": "string", "format": "binary" }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": { "type": "string", "format": "byte", "description": "Base64 JPEG" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Foto atualizada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "pictureId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "503": { "description": "Não pareado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/profile/privacy": {
+      "get": {
+        "summary": "Obter configurações de privacidade",
+        "tags": ["Perfil"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Configurações de privacidade" }
+        }
+      },
+      "put": {
+        "summary": "Alterar configurações de privacidade",
+        "tags": ["Perfil"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Mapeamento categoria → valor",
+                "example": { "group_add": "contacts", "last": "all", "status": "contacts", "profile": "none", "readreceipts": "all" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Privacidade atualizada" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/blocklist": {
+      "get": {
+        "summary": "Obter lista de bloqueios",
+        "tags": ["Bloqueios"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Lista de bloqueios" }
+        }
+      },
+      "post": {
+        "summary": "Bloquear/desbloquear usuários",
+        "tags": ["Bloqueios"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "action": { "type": "string", "enum": ["block", "unblock"] },
+                  "jids": { "type": "array", "items": { "type": "string" } }
+                },
+                "required": ["action", "jids"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Lista atualizada" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/newsletters": {
+      "post": {
+        "summary": "Criar newsletter (canal)",
+        "tags": ["Newsletters"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "picture": { "type": "string", "format": "byte", "description": "Base64 da foto" }
+                },
+                "required": ["name"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Newsletter criada" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/newsletters/{jid}": {
+      "get": {
+        "summary": "Obter informações do newsletter",
+        "tags": ["Newsletters"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Informações do newsletter" }
+        }
+      },
+      "delete": {
+        "summary": "Deixar de seguir newsletter",
+        "tags": ["Newsletters"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Não segue mais" }
+        }
+      },
+      "put": {
+        "summary": "Atualizar newsletter",
+        "tags": ["Newsletters"],
+        "description": "**Não implementado** — whatsmeow não suporta atualização de newsletter nesta versão.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "501": { "description": "Não implementado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/newsletters/{jid}/mute": {
+      "post": {
+        "summary": "Silenciar/reativar newsletter",
+        "tags": ["Newsletters"],
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "jid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mute": { "type": "boolean", "description": "true para silenciar, false para ativar" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Configurado" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/messages/pix": {
+      "post": {
+        "summary": "Enviar PIX via WhatsApp",
+        "tags": ["PIX"],
+        "description": "Gera um QR Code PIX (EMV estático) e envia para o destinatário no WhatsApp. Pode enviar como imagem (QR Code) ou como texto formatado com o código copia e cola.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "to": { "type": "string", "description": "Telefone ou JID do destinatário" },
+                  "pixKey": { "type": "string", "description": "Chave PIX (CPF, CNPJ, telefone, e-mail ou chave aleatória)" },
+                  "keyType": { "type": "string", "enum": ["cpf", "cnpj", "phone", "email", "random"], "description": "Tipo da chave PIX" },
+                  "merchantName": { "type": "string", "description": "Nome do recebedor (até 25 caracteres)" },
+                  "merchantCity": { "type": "string", "description": "Cidade do recebedor (até 15 caracteres)" },
+                  "amount": { "type": "number", "format": "float", "description": "Valor da transação (opcional)" },
+                  "description": { "type": "string", "description": "Descrição do pagamento (opcional)" },
+                  "sendQRCode": { "type": "boolean", "description": "Enviar QR Code como imagem (true) ou apenas texto (false)", "default": true }
+                },
+                "required": ["to", "pixKey", "merchantName"],
+                "example": {
+                  "to": "5531992604940",
+                  "pixKey": "123.456.789-00",
+                  "keyType": "cpf",
+                  "merchantName": "João Silva",
+                  "merchantCity": "Belo Horizonte",
+                  "amount": 150.00,
+                  "description": "Pagamento do serviço de consultoria",
+                  "sendQRCode": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "PIX enviado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PixResponse" } } } },
+          "400": { "description": "Parâmetros inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "503": { "description": "Não conectado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/pix/generate": {
+      "post": {
+        "summary": "Gerar QR Code PIX (sem enviar)",
+        "tags": ["PIX"],
+        "description": "Gera um QR Code PIX estático e retorna o código copia e cola (EMV) e a imagem do QR Code em base64. Útil para pré-visualização.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pixKey": { "type": "string", "description": "Chave PIX" },
+                  "keyType": { "type": "string", "enum": ["cpf", "cnpj", "phone", "email", "random"], "description": "Tipo da chave PIX" },
+                  "merchantName": { "type": "string", "description": "Nome do recebedor" },
+                  "merchantCity": { "type": "string", "description": "Cidade do recebedor" },
+                  "amount": { "type": "number", "format": "float", "description": "Valor (opcional)" },
+                  "description": { "type": "string", "description": "Descrição (opcional)" }
+                },
+                "required": ["pixKey"],
+                "example": {
+                  "pixKey": "123.456.789-00",
+                  "keyType": "cpf",
+                  "merchantName": "João Silva",
+                  "merchantCity": "Belo Horizonte",
+                  "amount": 150.00,
+                  "description": "Pagamento de consultoria"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "QR Code gerado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PixGenerateResponse" } } } },
+          "400": { "description": "Parâmetros inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/pix/validate": {
+      "post": {
+        "summary": "Validar chave PIX",
+        "tags": ["PIX"],
+        "description": "Valida uma chave PIX de acordo com seu tipo. Para CPF e CNPJ, valida os dígitos verificadores.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pixKey": { "type": "string", "description": "Chave PIX para validar" },
+                  "keyType": { "type": "string", "enum": ["cpf", "cnpj", "phone", "email", "random"], "description": "Tipo da chave" }
+                },
+                "required": ["pixKey", "keyType"],
+                "example": {
+                  "pixKey": "123.456.789-00",
+                  "keyType": "cpf"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Resultado da validação", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PixValidateResponse" } } } },
+          "400": { "description": "Parâmetros inválidos", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/api/sessions/{sid}/webhooks": {
+      "get": {
+        "summary": "Listar webhooks da sessão",
+        "tags": ["Webhooks"],
+        "description": "Retorna todos os webhooks configurados para a sessão.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de webhooks",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "webhooks": {
+                      "type": "array",
+                      "items": { "$ref": "#/components/schemas/Webhook" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Criar webhook",
+        "tags": ["Webhooks"],
+        "description": "Cria um novo webhook para a sessão. Eventos serão enviados via POST para a URL configurada.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string", "description": "URL que receberá os eventos via POST" },
+                  "events": { "type": "string", "description": "Lista de eventos separados por vírgula. Use '*' para todos. Ex: 'message,presence,call-status'" },
+                  "enabled": { "type": "boolean", "description": "Ativar/desativar webhook (padrão: true)" },
+                  "secret": { "type": "string", "description": "Segredo para assinatura HMAC-SHA256 (header X-Webhook-Signature)" }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook criado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sessions/{sid}/webhooks/{wid}": {
+      "put": {
+        "summary": "Atualizar webhook",
+        "tags": ["Webhooks"],
+        "description": "Atualiza um webhook existente.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "wid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string", "description": "Nova URL" },
+                  "events": { "type": "string", "description": "Novos eventos (separados por vírgula ou '*')" },
+                  "enabled": { "type": "boolean", "description": "Ativar/desativar" },
+                  "secret": { "type": "string", "description": "Novo segredo" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook atualizado",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Webhook" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remover webhook",
+        "tags": ["Webhooks"],
+        "description": "Remove um webhook da sessão.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "wid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "204": { "description": "Webhook removido" }
+        }
+      }
+    },
+    "/api/sessions/{sid}/webhooks/{wid}/test": {
+      "post": {
+        "summary": "Testar webhook",
+        "tags": ["Webhooks"],
+        "description": "Envia um evento de teste para o webhook, sem aguardar por eventos reais.",
+        "parameters": [
+          { "name": "sid", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "wid", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resultado do teste",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "message": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/events": {
+      "get": {
+        "summary": "SSE — Stream de eventos em tempo real",
+        "tags": ["Eventos"],
+        "description": "Conexão Server-Sent Events. Envia snapshots e eventos em tempo real.",
+        "parameters": [
+          { "name": "clientId", "in": "query", "schema": { "type": "string" }, "description": "Identificador do cliente (alternativa ao header X-Client-Id)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stream SSE",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "description": "Eventos: session-list, session-qr, auth-state, call-list, call-status, call-ended, incoming, incoming-claimed, message, message-receipt, presence, group-updated, push-name. Ping a cada 20s."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
